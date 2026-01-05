@@ -1,3 +1,5 @@
+[file name]: script.js
+[file content begin]
 // Простая система авторизации
 class AuthManager {
     constructor() {
@@ -183,6 +185,9 @@ class PalletTrackerApp {
         this.workStartTime = null;
         this.workEndTime = null;
         this.isWorkingDay = false;
+        this.isOnBreak = false;
+        this.breakStartTime = null;
+        this.breakDuration = 0; // в минутах
         this.currentPalletCheck = null;
         this.palletsChecked = 0;
         this.totalPalletsToCheck = 15;
@@ -250,6 +255,11 @@ class PalletTrackerApp {
         const startWorkDayBtn = document.getElementById('startWorkDay');
         if (startWorkDayBtn) {
             startWorkDayBtn.addEventListener('click', () => this.startWorkDay());
+        }
+        
+        const breakBtn = document.getElementById('breakBtn');
+        if (breakBtn) {
+            breakBtn.addEventListener('click', () => this.toggleBreak());
         }
         
         const endWorkDayBtn = document.getElementById('endWorkDay');
@@ -404,6 +414,9 @@ class PalletTrackerApp {
             this.workStartTime = null;
             this.workEndTime = null;
             this.isWorkingDay = false;
+            this.isOnBreak = false;
+            this.breakStartTime = null;
+            this.breakDuration = 0;
             this.currentPalletCheck = null;
             this.palletsChecked = 0;
             this.todayChecks = [];
@@ -523,6 +536,9 @@ class PalletTrackerApp {
     startWorkDay() {
         this.workStartTime = new Date();
         this.isWorkingDay = true;
+        this.isOnBreak = false;
+        this.breakStartTime = null;
+        this.breakDuration = 0;
         this.palletsChecked = 0;
         this.todayChecks = [];
         this.tempErrors = [];
@@ -537,9 +553,51 @@ class PalletTrackerApp {
         this.showNotification('Рабочий день начат', 'success');
     }
     
+    toggleBreak() {
+        if (!this.isWorkingDay) {
+            this.showNotification('Сначала начните рабочий день!', 'error');
+            return;
+        }
+        
+        if (this.currentPalletCheck) {
+            this.showNotification('Завершите текущую проверку паллета перед перерывом!', 'error');
+            return;
+        }
+        
+        if (this.isOnBreak) {
+            // Завершение перерыва
+            if (this.breakStartTime) {
+                const breakEndTime = new Date();
+                const breakTime = Math.round((breakEndTime - this.breakStartTime) / 1000 / 60); // в минутах
+                this.breakDuration += breakTime;
+                this.breakStartTime = null;
+            }
+            this.isOnBreak = false;
+            this.enablePalletControls();
+            this.showNotification('Перерыв завершен', 'success');
+        } else {
+            // Начало перерыва
+            this.isOnBreak = true;
+            this.breakStartTime = new Date();
+            this.disablePalletControls();
+            this.showNotification('Начался перерыв', 'info');
+        }
+        
+        this.updateDisplay();
+    }
+    
     endWorkDay() {
         this.workEndTime = new Date();
         this.isWorkingDay = false;
+        this.isOnBreak = false;
+        
+        // Завершаем перерыв если он был активен
+        if (this.breakStartTime) {
+            const breakEndTime = new Date();
+            const breakTime = Math.round((breakEndTime - this.breakStartTime) / 1000 / 60);
+            this.breakDuration += breakTime;
+            this.breakStartTime = null;
+        }
         
         this.saveTodayToHistory();
         this.updateDisplay();
@@ -568,6 +626,11 @@ class PalletTrackerApp {
         
         if (!this.isWorkingDay) {
             this.showNotification('Сначала начните рабочий день!', 'error');
+            return;
+        }
+        
+        if (this.isOnBreak) {
+            this.showNotification('Сейчас перерыв! Завершите перерыв чтобы начать проверку.', 'error');
             return;
         }
         
@@ -982,194 +1045,131 @@ class PalletTrackerApp {
     }
     
     // ============ ЭКСПОРТ ДАННЫХ ============
-    // ============ ЭКСПОРТ ДАННЫХ ============
-exportToExcel() {
-    if (this.todayChecks.length === 0) {
-        this.showNotification('Нет данных для экспорта', 'error');
-        return;
-    }
-    
-    try {
-        // Создаем книгу Excel
-        const wb = XLSX.utils.book_new();
+    exportToExcel() {
+        if (this.todayChecks.length === 0) {
+            this.showNotification('Нет данных для экспорта', 'error');
+            return;
+        }
         
-        // ===== Лист с данными проверок (как в Лист15) =====
-        const checksData = [
-            ['Дата', 'Завод', 'РЦ', 'Номер Паллеты', 'Наименование ошибки', 'Материал', 'Наименование материала', 'Количество', 'Базисная единица', 'Продолжительность проверки, минут', 'Комментарий']
-        ];
-        
-        // Добавляем данные проверок
-        this.todayChecks.forEach((check, index) => {
-            const checkDate = new Date(check.start);
+        try {
+            // Создаем книгу Excel
+            const wb = XLSX.utils.book_new();
             
-            // Если есть ошибки, создаем строку для каждой ошибки
-            if (check.errors && check.errors.length > 0) {
-                check.errors.forEach(error => {
-                    const row = [
-                        checkDate.toISOString().replace('T', ' ').substring(0, 19), // Дата в формате "2026-01-05 00:00:00"
-                        '159.0', // Завод (по умолчанию)
-                        this.settings.rcName || 'РЦ Подольск Холодный', // РЦ
-                        check.code, // Номер Паллеты
-                        error.type, // Наименование ошибки
-                        error.plu || '', // Материал (PLU)
-                        error.productName || '', // Наименование материала
-                        error.quantity || '', // Количество
-                        error.unit || '', // Базисная единица
-                        this.convertDurationToMinutes(check.duration), // Продолжительность проверки в минутах
-                        error.comment || '' // Комментарий
-                    ];
-                    checksData.push(row);
-                });
-            } else {
-                // Если нет ошибок, создаем строку с "Без расхождений"
-                const row = [
-                    checkDate.toISOString().replace('T', ' ').substring(0, 19),
-                    '159.0',
-                    this.settings.rcName || 'РЦ Подольск Холодный',
-                    check.code,
-                    'Без расхождений',
-                    '', // Материал
-                    '', // Наименование материала
-                    check.boxCount || 0, // Количество коробов
-                    'короб', // Базисная единица
-                    this.convertDurationToMinutes(check.duration),
-                    '' // Комментарий
-                ];
-                checksData.push(row);
-            }
-        });
-        
-        const checksWs = XLSX.utils.aoa_to_sheet(checksData);
-        XLSX.utils.book_append_sheet(wb, checksWs, "Проверки паллетов");
-        
-        // ===== Лист со сводной информацией =====
-        const summaryData = [
-            ['Отчет о проверке паллетов', '', '', '', '', '', ''],
-            ['Дата:', new Date().toLocaleDateString('ru-RU'), '', '', '', '', ''],
-            ['РЦ:', this.settings.rcName, 'Код РЦ:', this.settings.rcCode, '', '', ''],
-            ['Специалист КРО:', this.settings.specialistName, 'Email:', this.settings.specialistEmail, '', '', ''],
-            ['', '', '', '', '', '', ''],
-            ['№', 'D-код', 'Коробов', 'Начало', 'Окончание', 'Длительность', 'Ошибки']
-        ];
-        
-        // Добавляем данные проверок
-        this.todayChecks.forEach((check, index) => {
-            const errorsCount = check.errors ? check.errors.length : 0;
-            summaryData.push([
-                index + 1,
-                check.code,
-                check.boxCount || 0,
-                this.formatTime(new Date(check.start)),
-                this.formatTime(new Date(check.end)),
-                check.duration,
-                errorsCount > 0 ? `${errorsCount} ошибок` : 'Нет'
-            ]);
-        });
-        
-        // Добавляем итоги
-        const totalPallets = this.todayChecks.length;
-        const totalBoxes = this.todayChecks.reduce((sum, check) => sum + (check.boxCount || 0), 0);
-        const totalErrors = this.todayChecks.reduce((sum, check) => sum + (check.errors ? check.errors.length : 0), 0);
-        
-        summaryData.push(['', '', '', '', '', '', '']);
-        summaryData.push(['ИТОГО:', totalPallets, 'паллетов', totalBoxes, 'коробов', totalErrors, 'ошибок']);
-        
-        const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(wb, summaryWs, "Сводная информация");
-        
-        // ===== Лист с историей (если есть) =====
-        if (Object.keys(this.allDaysHistory).length > 0) {
-            const historyData = [
-                ['Дата', 'Начало работы', 'Конец работы', 'Паллетов', 'Коробов', 'Общее время']
+            // ===== Лист с данными проверок (формат как в Лист15) =====
+            const checksData = [
+                ['Дата', 'Завод', 'РЦ', 'Номер Паллеты', 'Наименование ошибки', 'Материал', 'Наименование материала', 'Количество', 'Базисная единица', 'Продолжительность проверки, минут', 'Комментарий']
             ];
             
-            const dates = Object.keys(this.allDaysHistory).sort((a, b) => b.localeCompare(a));
-            
-            dates.forEach(dateStr => {
-                const dayData = this.allDaysHistory[dateStr];
+            // Добавляем данные проверок в формате как в примере
+            this.todayChecks.forEach((check) => {
+                const checkDate = new Date(check.start);
+                const dateStr = checkDate.toISOString().replace('T', ' ').substring(0, 19);
                 
-                if (dayData.work_start) {
-                    const date = new Date(dateStr);
-                    const dateDisplay = date.toLocaleDateString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
+                // Если есть ошибки, создаем строку для каждой ошибки
+                if (check.errors && check.errors.length > 0) {
+                    check.errors.forEach(error => {
+                        const row = [
+                            dateStr, // Дата
+                            '159.0', // Завод
+                            this.settings.rcName, // РЦ
+                            check.code, // Номер Паллеты
+                            error.type, // Наименование ошибки
+                            error.plu || '', // Материал (PLU)
+                            error.productName || '', // Наименование материала
+                            error.quantity || '', // Количество
+                            error.unit || '', // Базисная единица
+                            this.convertDurationToMinutes(check.duration), // Продолжительность в минутах
+                            error.comment || '' // Комментарий
+                        ];
+                        checksData.push(row);
                     });
-                    
-                    const startTime = new Date(dayData.work_start);
-                    const startStr = startTime.toLocaleTimeString('ru-RU', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    
-                    let endStr = '-';
-                    let totalTime = '-';
-                    let pallets = dayData.pallets_checked || 0;
-                    let totalBoxes = 0;
-                    
-                    if (dayData.checks) {
-                        totalBoxes = dayData.checks.reduce((sum, check) => sum + (check.boxCount || 0), 0);
-                    }
-                    
-                    if (dayData.work_end) {
-                        const endTime = new Date(dayData.work_end);
-                        endStr = endTime.toLocaleTimeString('ru-RU', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
-                        
-                        const duration = (endTime - startTime) / 1000 / 60;
-                        const hours = Math.floor(duration / 60);
-                        const minutes = Math.round(duration % 60);
-                        totalTime = `${hours}ч ${minutes}м`;
-                    }
-                    
-                    historyData.push([
-                        dateDisplay,
-                        startStr,
-                        endStr,
-                        pallets,
-                        totalBoxes,
-                        totalTime
-                    ]);
+                } else {
+                    // Если нет ошибок - "Без расхождений"
+                    const row = [
+                        dateStr, // Дата
+                        '159.0', // Завод
+                        this.settings.rcName, // РЦ
+                        check.code, // Номер Паллеты
+                        'Без расхождений', // Наименование ошибки
+                        '', // Материал
+                        '', // Наименование материала
+                        check.boxCount || 0, // Количество
+                        'короб', // Базисная единица
+                        this.convertDurationToMinutes(check.duration), // Продолжительность в минутах
+                        '' // Комментарий
+                    ];
+                    checksData.push(row);
                 }
             });
             
-            const historyWs = XLSX.utils.aoa_to_sheet(historyData);
-            XLSX.utils.book_append_sheet(wb, historyWs, "История проверок");
+            const checksWs = XLSX.utils.aoa_to_sheet(checksData);
+            XLSX.utils.book_append_sheet(wb, checksWs, "Проверки");
+            
+            // ===== Лист со сводной информацией =====
+            const summaryData = [
+                ['Отчет о проверке паллетов', '', '', '', '', '', ''],
+                ['Дата:', new Date().toLocaleDateString('ru-RU'), '', '', '', '', ''],
+                ['РЦ:', this.settings.rcName, 'Код РЦ:', this.settings.rcCode, '', '', ''],
+                ['Специалист КРО:', this.settings.specialistName, 'Email:', this.settings.specialistEmail, '', '', ''],
+                ['', '', '', '', '', '', ''],
+                ['№', 'D-код', 'Коробов', 'Начало', 'Окончание', 'Длительность', 'Ошибки']
+            ];
+            
+            this.todayChecks.forEach((check, index) => {
+                const errorsCount = check.errors ? check.errors.length : 0;
+                summaryData.push([
+                    index + 1,
+                    check.code,
+                    check.boxCount || 0,
+                    this.formatTime(new Date(check.start)),
+                    this.formatTime(new Date(check.end)),
+                    check.duration,
+                    errorsCount > 0 ? `${errorsCount} ошибок` : 'Нет'
+                ]);
+            });
+            
+            const totalPallets = this.todayChecks.length;
+            const totalBoxes = this.todayChecks.reduce((sum, check) => sum + (check.boxCount || 0), 0);
+            const totalErrors = this.todayChecks.reduce((sum, check) => sum + (check.errors ? check.errors.length : 0), 0);
+            
+            summaryData.push(['', '', '', '', '', '', '']);
+            summaryData.push(['ИТОГО:', totalPallets, 'паллетов', totalBoxes, 'коробов', totalErrors, 'ошибок']);
+            
+            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, summaryWs, "Сводная информация");
+            
+            // Генерируем имя файла
+            const fileName = `Проверка_паллетов_${this.settings.rcCode}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            
+            // Сохраняем файл
+            XLSX.writeFile(wb, fileName);
+            
+            this.showNotification('Excel файл успешно скачан в нужном формате', 'success');
+        } catch (error) {
+            console.error('Ошибка при экспорте в Excel:', error);
+            this.showNotification('Ошибка при экспорте в Excel', 'error');
+        }
+    }
+    
+    convertDurationToMinutes(durationStr) {
+        if (!durationStr) return 0;
+        
+        try {
+            // Формат "минуты:секунды"
+            const parts = durationStr.split(':');
+            if (parts.length >= 2) {
+                const minutes = parseInt(parts[0]) || 0;
+                const seconds = parseInt(parts[1]) || 0;
+                const totalMinutes = minutes + (seconds / 60);
+                return Math.round(totalMinutes * 10) / 10; // Округляем до 1 десятичного знака
+            }
+        } catch (e) {
+            console.error('Ошибка преобразования длительности:', e);
         }
         
-        // Генерируем имя файла
-        const fileName = `Проверка_паллетов_${this.settings.rcCode}_${new Date().toISOString().slice(0,10)}.xlsx`;
-        
-        // Сохраняем файл
-        XLSX.writeFile(wb, fileName);
-        
-        this.showNotification('Excel файл успешно скачан', 'success');
-    } catch (error) {
-        console.error('Ошибка при экспорте в Excel:', error);
-        this.showNotification('Ошибка при экспорте в Excel', 'error');
-    }
-},
-
-// ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
-convertDurationToMinutes(durationStr) {
-    if (!durationStr) return 0;
-    
-    try {
-        // Формат "минуты:секунды"
-        const parts = durationStr.split(':');
-        if (parts.length >= 2) {
-            const minutes = parseInt(parts[0]) || 0;
-            const seconds = parseInt(parts[1]) || 0;
-            return minutes + (seconds / 60);
-        }
-    } catch (e) {
-        console.error('Ошибка преобразования длительности:', e);
+        return 0;
     }
     
-    return 0;
-},
     generateAct() {
         if (this.todayChecks.length === 0) {
             this.showNotification('Нет данных для формирования акта', 'error');
@@ -1287,15 +1287,32 @@ ${this.settings.specialistEmail}
                 const hours = Math.floor(duration / 60);
                 const minutes = duration % 60;
                 
+                let breakInfo = '';
+                if (this.breakDuration > 0) {
+                    breakInfo = ` | Перерывы: ${this.breakDuration} мин`;
+                }
+                
                 display.innerHTML = `
                     <i class="fas fa-clock"></i> 
                     Начало: ${startStr} | Конец: ${endStr} | 
-                    Время: ${hours}ч ${minutes}мин
+                    Время: ${hours}ч ${minutes}мин${breakInfo}
                 `;
             } else {
+                let currentStatus = 'Рабочий день идет...';
+                let breakInfo = '';
+                
+                if (this.isOnBreak) {
+                    currentStatus = 'Перерыв';
+                    if (this.breakStartTime) {
+                        const now = new Date();
+                        const breakTime = Math.round((now - this.breakStartTime) / 1000 / 60);
+                        breakInfo = ` (длится: ${breakTime} мин)`;
+                    }
+                }
+                
                 display.innerHTML = `
                     <i class="fas fa-clock"></i> 
-                    Начало: ${startStr} | Рабочий день идет...
+                    Начало: ${startStr} | ${currentStatus}${breakInfo}
                 `;
             }
         } else {
@@ -1344,13 +1361,21 @@ ${this.settings.specialistEmail}
     
     updateButtonStates() {
         const startWorkBtn = document.getElementById('startWorkDay');
+        const breakBtn = document.getElementById('breakBtn');
         const endWorkBtn = document.getElementById('endWorkDay');
         const startCheckBtn = document.getElementById('startPalletCheck');
         const endCheckBtn = document.getElementById('endPalletCheck');
         
         if (startWorkBtn) startWorkBtn.disabled = this.isWorkingDay;
+        if (breakBtn) {
+            breakBtn.disabled = !this.isWorkingDay;
+            breakBtn.innerHTML = this.isOnBreak ? 
+                '<i class="fas fa-play"></i> Продолжить работу' : 
+                '<i class="fas fa-coffee"></i> Перерыв';
+            breakBtn.className = this.isOnBreak ? 'btn btn-success' : 'btn btn-warning';
+        }
         if (endWorkBtn) endWorkBtn.disabled = !this.isWorkingDay;
-        if (startCheckBtn) startCheckBtn.disabled = !this.isWorkingDay || this.currentPalletCheck !== null;
+        if (startCheckBtn) startCheckBtn.disabled = !this.isWorkingDay || this.currentPalletCheck !== null || this.isOnBreak;
         if (endCheckBtn) endCheckBtn.disabled = this.currentPalletCheck === null;
     }
     
@@ -1359,11 +1384,13 @@ ${this.settings.specialistEmail}
         const endPalletCheck = document.getElementById('endPalletCheck');
         const startWorkDay = document.getElementById('startWorkDay');
         const endWorkDay = document.getElementById('endWorkDay');
+        const breakBtn = document.getElementById('breakBtn');
         
         if (startPalletCheck) startPalletCheck.disabled = false;
         if (endPalletCheck) endPalletCheck.disabled = true;
         if (startWorkDay) startWorkDay.disabled = true;
         if (endWorkDay) endWorkDay.disabled = false;
+        if (breakBtn) breakBtn.disabled = false;
         
         this.updateButtonStates();
     }
@@ -1373,11 +1400,13 @@ ${this.settings.specialistEmail}
         const endPalletCheck = document.getElementById('endPalletCheck');
         const startWorkDay = document.getElementById('startWorkDay');
         const endWorkDay = document.getElementById('endWorkDay');
+        const breakBtn = document.getElementById('breakBtn');
         
         if (startPalletCheck) startPalletCheck.disabled = true;
         if (endPalletCheck) endPalletCheck.disabled = true;
         if (startWorkDay) startWorkDay.disabled = false;
         if (endWorkDay) endWorkDay.disabled = true;
+        if (breakBtn) breakBtn.disabled = true;
         
         this.updateButtonStates();
     }
@@ -1457,6 +1486,7 @@ ${this.settings.specialistEmail}
             work_start: this.workStartTime ? this.workStartTime.toISOString() : null,
             work_end: this.workEndTime ? this.workEndTime.toISOString() : null,
             pallets_checked: this.palletsChecked,
+            break_duration: this.breakDuration,
             checks: this.todayChecks.map(check => ({
                 ...check,
                 start: check.start.toISOString(),
@@ -1477,6 +1507,9 @@ ${this.settings.specialistEmail}
             })),
             workStartTime: this.workStartTime ? this.workStartTime.toISOString() : null,
             workEndTime: this.workEndTime ? this.workEndTime.toISOString() : null,
+            isOnBreak: this.isOnBreak,
+            breakStartTime: this.breakStartTime ? this.breakStartTime.toISOString() : null,
+            breakDuration: this.breakDuration,
             palletsChecked: this.palletsChecked,
             isWorkingDay: this.isWorkingDay,
             currentPalletCheck: this.currentPalletCheck ? {
@@ -1501,6 +1534,9 @@ ${this.settings.specialistEmail}
             this.allDaysHistory = data.allDaysHistory || {};
             this.workStartTime = data.workStartTime ? new Date(data.workStartTime) : null;
             this.workEndTime = data.workEndTime ? new Date(data.workEndTime) : null;
+            this.isOnBreak = data.isOnBreak || false;
+            this.breakStartTime = data.breakStartTime ? new Date(data.breakStartTime) : null;
+            this.breakDuration = data.breakDuration || 0;
             this.palletsChecked = data.palletsChecked || 0;
             this.isWorkingDay = data.isWorkingDay || false;
             this.tempErrors = data.tempErrors || [];
@@ -1561,3 +1597,4 @@ document.addEventListener('DOMContentLoaded', () => {
     window.authManager.init();
     console.log('Приложения инициализированы');
 });
+[file content end]
