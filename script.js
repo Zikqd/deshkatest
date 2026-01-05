@@ -1,5 +1,10 @@
 [file name]: script.js
 [file content begin]
+// Глобальная функция для отладки
+function debugLog(message, data = null) {
+    console.log(`[DEBUG] ${message}`, data || '');
+}
+
 // Простая система авторизации
 class AuthManager {
     constructor() {
@@ -12,37 +17,83 @@ class AuthManager {
     }
     
     init() {
+        debugLog('Инициализация AuthManager');
         this.setupEventListeners();
         this.checkAutoLogin();
     }
     
     setupEventListeners() {
-        // Кнопка входа
-        const loginButton = document.getElementById('loginButton');
-        if (loginButton) {
-            loginButton.addEventListener('click', () => this.login());
-        } else {
-            console.error('Кнопка loginButton не найдена!');
-        }
+        debugLog('Настройка обработчиков событий AuthManager');
+        
+        // Прямое добавление обработчика с проверкой DOM
+        setTimeout(() => {
+            const loginButton = document.getElementById('loginButton');
+            debugLog('Поиск кнопки loginButton:', !!loginButton);
+            
+            if (loginButton) {
+                loginButton.addEventListener('click', (e) => {
+                    debugLog('Кнопка входа нажата');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.login();
+                });
+                
+                // Также добавляем обработчик для формы
+                const loginForm = document.querySelector('.login-form');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        debugLog('Форма отправлена');
+                        this.login();
+                    });
+                }
+            } else {
+                debugLog('Кнопка loginButton не найдена!');
+                
+                // Пытаемся найти через другие селекторы
+                const allButtons = document.querySelectorAll('button');
+                debugLog('Всего кнопок на странице:', allButtons.length);
+                
+                // Пробуем найти любую кнопку с текстом "Войти"
+                for (let btn of allButtons) {
+                    if (btn.textContent.includes('Войти')) {
+                        debugLog('Найдена кнопка "Войти" через текст');
+                        btn.addEventListener('click', () => {
+                            debugLog('Кнопка "Войти" нажата через альтернативный поиск');
+                            this.login();
+                        });
+                    }
+                }
+            }
+        }, 100); // Небольшая задержка для полной загрузки DOM
         
         // Кнопка показа/скрытия пароля
         const togglePassword = document.getElementById('togglePassword');
         if (togglePassword) {
-            togglePassword.addEventListener('click', () => this.togglePasswordVisibility());
+            togglePassword.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.togglePasswordVisibility();
+            });
         }
         
         // Ввод по Enter
         const usernameInput = document.getElementById('username');
         if (usernameInput) {
             usernameInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.login();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.login();
+                }
             });
         }
         
         const passwordInput = document.getElementById('password');
         if (passwordInput) {
             passwordInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.login();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.login();
+                }
             });
         }
     }
@@ -63,12 +114,15 @@ class AuthManager {
     }
     
     login() {
-        console.log('Метод login() вызван');
+        debugLog('=== МЕТОД LOGIN() ВЫЗВАН ===');
         
-        const username = document.getElementById('username')?.value.trim() || '';
-        const password = document.getElementById('password')?.value || '';
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
         
-        console.log('Попытка входа:', username);
+        const username = usernameInput ? usernameInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value : '';
+        
+        debugLog('Попытка входа:', { username, passwordLength: password.length });
         
         if (!username || !password) {
             this.showNotification('Введите имя пользователя и пароль', 'error');
@@ -77,6 +131,7 @@ class AuthManager {
         
         // Проверка учетных данных
         if (this.users[username] && this.users[username].password === password) {
+            debugLog('Учетные данные верны');
             this.currentUser = {
                 username: username,
                 name: this.users[username].name
@@ -89,15 +144,34 @@ class AuthManager {
             const loginScreen = document.getElementById('loginScreen');
             const appContainer = document.getElementById('appContainer');
             
-            if (loginScreen) loginScreen.style.display = 'none';
-            if (appContainer) appContainer.style.display = 'block';
+            debugLog('Элементы найдены:', {
+                loginScreen: !!loginScreen,
+                appContainer: !!appContainer
+            });
+            
+            if (loginScreen) {
+                loginScreen.style.display = 'none';
+                debugLog('Экран входа скрыт');
+            }
+            
+            if (appContainer) {
+                appContainer.style.display = 'block';
+                debugLog('Основное приложение показано');
+            }
             
             // Обновляем информацию о пользователе
             const currentUserElement = document.getElementById('currentUser');
             const footerUserElement = document.getElementById('footerUser');
             
-            if (currentUserElement) currentUserElement.textContent = this.currentUser.name;
-            if (footerUserElement) footerUserElement.textContent = this.currentUser.name;
+            if (currentUserElement) {
+                currentUserElement.textContent = this.currentUser.name;
+                debugLog('Имя пользователя обновлено в шапке');
+            }
+            
+            if (footerUserElement) {
+                footerUserElement.textContent = this.currentUser.name;
+                debugLog('Имя пользователя обновлено в подвале');
+            }
             
             // Инициализируем приложение
             if (!window.app) {
@@ -107,8 +181,8 @@ class AuthManager {
             
             this.showNotification(`Добро пожаловать, ${this.currentUser.name}!`, 'success');
         } else {
+            debugLog('Неверные учетные данные');
             this.showNotification('Неверное имя пользователя или пароль', 'error');
-            const passwordInput = document.getElementById('password');
             if (passwordInput) {
                 passwordInput.value = '';
                 passwordInput.focus();
@@ -122,8 +196,15 @@ class AuthManager {
         const loginScreen = document.getElementById('loginScreen');
         const appContainer = document.getElementById('appContainer');
         
-        if (loginScreen) loginScreen.style.display = 'flex';
-        if (appContainer) appContainer.style.display = 'none';
+        if (loginScreen) {
+            loginScreen.style.display = 'flex';
+            debugLog('Экран входа показан');
+        }
+        
+        if (appContainer) {
+            appContainer.style.display = 'none';
+            debugLog('Основное приложение скрыто');
+        }
         
         // Очищаем форму
         const usernameInput = document.getElementById('username');
@@ -207,7 +288,7 @@ class PalletTrackerApp {
     }
     
     initApp() {
-        console.log('Инициализация приложения');
+        debugLog('Инициализация приложения PalletTrackerApp');
         this.setupDate();
         this.setupEventListeners();
         this.loadFromStorage();
@@ -231,7 +312,7 @@ class PalletTrackerApp {
     }
     
     setupEventListeners() {
-        console.log('Настройка обработчиков событий');
+        debugLog('Настройка обработчиков событий PalletTrackerApp');
         
         // Кнопка выхода
         const logoutBtn = document.getElementById('logoutBtn');
@@ -1590,11 +1671,36 @@ ${this.settings.specialistEmail}
     }
 }
 
-// Запуск приложения при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Документ загружен');
-    window.authManager = new AuthManager();
-    window.authManager.init();
-    console.log('Приложения инициализированы');
+// Асинхронная инициализация после полной загрузки DOM
+function initApp() {
+    debugLog('=== НАЧАЛО ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ ===');
+    
+    // Проверяем, существует ли уже authManager
+    if (!window.authManager) {
+        debugLog('Создание нового AuthManager');
+        window.authManager = new AuthManager();
+        window.authManager.init();
+    } else {
+        debugLog('AuthManager уже существует');
+    }
+    
+    debugLog('=== ЗАВЕРШЕНИЕ ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ ===');
+}
+
+// Несколько способов инициализации для надежности
+if (document.readyState === 'loading') {
+    debugLog('Документ еще загружается, добавляем обработчик DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    debugLog('Документ уже загружен, инициализируем сразу');
+    initApp();
+}
+
+// Также инициализируем при полной загрузке страницы
+window.addEventListener('load', () => {
+    debugLog('Страница полностью загружена');
 });
+
+// Экспортируем для отладки в консоли
+window.debugLog = debugLog;
 [file content end]
