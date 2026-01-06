@@ -179,6 +179,7 @@ class AuthManager {
 }
 
 // Основной класс приложения
+// В конструкторе класса PalletTrackerApp:
 class PalletTrackerApp {
     constructor() {
         this.workStartTime = null;
@@ -205,7 +206,7 @@ class PalletTrackerApp {
             specialistName: 'Иванов И.И.',
             specialistEmail: 'ivanov@example.com',
             targetPallets: 15,
-            factoryNumber: '159.0' // Номер завода вместо кода завода
+            factoryNumber: '159' // Изменено: номер завода (без .0)
         };
     }
     
@@ -479,7 +480,7 @@ class PalletTrackerApp {
         this.showModal('settingsModal');
     }
     
-    saveSettings() {
+      saveSettings() {
         const rcNameInput = document.getElementById('rcName');
         const rcCodeInput = document.getElementById('rcCode');
         const specialistNameInput = document.getElementById('specialistName');
@@ -493,7 +494,7 @@ class PalletTrackerApp {
             specialistName: specialistNameInput ? specialistNameInput.value || 'Иванов И.И.' : 'Иванов И.И.',
             specialistEmail: specialistEmailInput ? specialistEmailInput.value || 'ivanov@example.com' : 'ivanov@example.com',
             targetPallets: targetPalletsInput ? parseInt(targetPalletsInput.value) || 15 : 15,
-            factoryNumber: factoryNumberInput ? factoryNumberInput.value || '159.0' : '159.0'
+            factoryNumber: factoryNumberInput ? factoryNumberInput.value || '159' : '159' // Изменено
         };
         
         this.totalPalletsToCheck = this.settings.targetPallets;
@@ -959,6 +960,7 @@ class PalletTrackerApp {
     }
     
     // ============ ЭКСПОРТ В EXCEL ============
+     // ============ ЭКСПОРТ В EXCEL ============
     exportToExcel() {
         if (this.todayChecks.length === 0) {
             this.showNotification('Нет данных для экспорта', 'error');
@@ -1073,7 +1075,7 @@ class PalletTrackerApp {
 1. Распределительный центр: ${this.settings.rcName}
 2. Код РЦ: ${this.settings.rcCode}
 3. Специалист КРО: ${this.settings.specialistName}
-4. Номер завода: ${this.settings.factoryNumber}
+4. Номер завода: ${this.settings.factoryNumber} <!-- Изменено -->
             
 РЕЗУЛЬТАТЫ ПРОВЕРКИ:
             
@@ -1117,7 +1119,7 @@ ${index + 1}. Паллет ${check.code}:
             
 Дата проверки: ${new Date().toLocaleDateString('ru-RU')}
 Специалист КРО: ${this.settings.specialistName}
-Номер завода: ${this.settings.factoryNumber}
+Номер завода: ${this.settings.factoryNumber} <!-- Изменено -->
             
 Результаты проверки:
 - Проверено паллетов: ${totalPallets}
@@ -1142,6 +1144,7 @@ ${this.settings.specialistEmail}
         this.downloadTextFile(`Письмо_результатов_${this.settings.rcCode}_${new Date().toISOString().slice(0,10)}.txt`, letterContent);
         this.showNotification('Письмо результатов сформировано', 'success');
     }
+}
     
     downloadTextFile(filename, content) {
         const element = document.createElement('a');
