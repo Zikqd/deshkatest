@@ -193,13 +193,19 @@ class PalletTrackerApp {
         this.pendingConfirmCallback = null;
         this.currentPalletStatsIndex = null;
         
+        // Переменные для управления перерывами
+        this.breaks = []; // Массив перерывов {start, end, duration}
+        this.isOnBreak = false;
+        this.currentBreakStart = null;
+        this.totalBreakTime = 0; // Общее время перерывов в миллисекундах
+        
         this.settings = {
             rcName: 'Распределительный центр',
             rcCode: 'РЦ-001',
             specialistName: 'Иванов И.И.',
             specialistEmail: 'ivanov@example.com',
             targetPallets: 15,
-            factoryNumber: '159.0'
+            factoryNumber: '159.0' // Номер завода вместо кода завода
         };
     }
     
@@ -252,6 +258,11 @@ class PalletTrackerApp {
         const startWorkDayBtn = document.getElementById('startWorkDay');
         if (startWorkDayBtn) {
             startWorkDayBtn.addEventListener('click', () => this.startWorkDay());
+        }
+        
+        const breakButton = document.getElementById('breakButton');
+        if (breakButton) {
+            breakButton.addEventListener('click', () => this.toggleBreak());
         }
         
         const endWorkDayBtn = document.getElementById('endWorkDay');
@@ -410,15 +421,43 @@ class PalletTrackerApp {
             this.palletsChecked = 0;
             this.todayChecks = [];
             this.tempErrors = [];
+            this.breaks = [];
+            this.isOnBreak = false;
+            this.currentBreakStart = null;
+            this.totalBreakTime = 0;
+            
+            // Очищаем localStorage только для текущего дня
+            this.clearTodayFromStorage();
             
             // Скрываем панель экспорта
             const exportSection = document.getElementById('exportSection');
             if (exportSection) exportSection.style.display = 'none';
             
+            // Скрываем отображение перерыва
+            const breakDisplay = document.getElementById('breakTimeDisplay');
+            if (breakDisplay) breakDisplay.style.display = 'none';
+            
             this.updateDisplay();
             this.disablePalletControls();
             this.showNotification('Рабочий день сброшен', 'info');
         });
+    }
+    
+    clearTodayFromStorage() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const saved = localStorage.getItem('palletTrackerData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                // Удаляем только данные текущего дня из истории
+                if (data.allDaysHistory && data.allDaysHistory[today]) {
+                    delete data.allDaysHistory[today];
+                    localStorage.setItem('palletTrackerData', JSON.stringify(data));
+                }
+            }
+        } catch (e) {
+            console.error('Ошибка при очистке данных:', e);
+        }
     }
     
     showSettingsModal() {
@@ -525,7 +564,7 @@ class PalletTrackerApp {
         this.pendingConfirmCallback = null;
     }
     
-    // ============ РАБОЧИЙ ДЕНЬ ============
+    // ============ РАБОЧИЙ ДЕНЬ И ПЕРЕРЫВЫ ============
     startWorkDay() {
         this.workStartTime = new Date();
         this.isWorkingDay = true;
@@ -533,6 +572,10 @@ class PalletTrackerApp {
         this.todayChecks = [];
         this.tempErrors = [];
         this.currentPalletCheck = null;
+        this.breaks = [];
+        this.isOnBreak = false;
+        this.currentBreakStart = null;
+        this.totalBreakTime = 0;
         
         // Скрываем панель экспорта
         const exportSection = document.getElementById('exportSection');
@@ -543,7 +586,76 @@ class PalletTrackerApp {
         this.showNotification('Рабочий день начат', 'success');
     }
     
+    toggleBreak() {
+        if (!this.isWorkingDay) {
+            this.showNotification('Сначала начните рабочий день!', 'error');
+            return;
+        }
+        
+        if (this.currentPalletCheck) {
+            this.showNotification('Завершите проверку паллета перед перерывом!', 'error');
+            return;
+        }
+        
+        if (!this.isOnBreak) {
+            // Начало перерыва
+            this.currentBreakStart = new Date();
+            this.isOnBreak = true;
+            const breakButton = document.getElementById('breakButton');
+            if (breakButton) {
+                breakButton.innerHTML = '<i class="fas fa-coffee"></i> Завершить перерыв';
+                breakButton.classList.remove('btn-warning');
+                breakButton.classList.add('btn-success');
+            }
+            
+            const breakDisplay = document.getElementById('breakTimeDisplay');
+            if (breakDisplay) {
+                breakDisplay.textContent = `Перерыв начат: ${this.formatTime(this.currentBreakStart)}`;
+                breakDisplay.style.display = 'block';
+            }
+            
+            this.showNotification('Перерыв начат', 'info');
+        } else {
+            // Завершение перерыва
+            const breakEnd = new Date();
+            const breakDuration = breakEnd - this.currentBreakStart;
+            
+            this.breaks.push({
+                start: this.currentBreakStart,
+                end: breakEnd,
+                duration: breakDuration
+            });
+            
+            this.totalBreakTime += breakDuration;
+            
+            this.isOnBreak = false;
+            this.currentBreakStart = null;
+            
+            const breakButton = document.getElementById('breakButton');
+            if (breakButton) {
+                breakButton.innerHTML = '<i class="fas fa-coffee"></i> Перерыв';
+                breakButton.classList.remove('btn-success');
+                breakButton.classList.add('btn-warning');
+            }
+            
+            const breakDisplay = document.getElementById('breakTimeDisplay');
+            if (breakDisplay) {
+                breakDisplay.style.display = 'none';
+            }
+            
+            const breakMinutes = Math.round(breakDuration / 1000 / 60);
+            this.showNotification(`Перерыв завершен. Длительность: ${breakMinutes} минут`, 'info');
+        }
+        
+        this.updateDisplay();
+    }
+    
     endWorkDay() {
+        if (this.isOnBreak) {
+            // Если пользователь на перерыве, завершаем его
+            this.toggleBreak();
+        }
+        
         this.workEndTime = new Date();
         this.isWorkingDay = false;
         
@@ -566,6 +678,11 @@ class PalletTrackerApp {
     
     // ============ ПРОВЕРКА ПАЛЛЕТОВ ============
     startPalletCheck() {
+        if (this.isOnBreak) {
+            this.showNotification('Завершите перерыв перед началом проверки!', 'error');
+            return;
+        }
+        
         const palletCodeInput = document.getElementById('palletCode');
         const boxCountInput = document.getElementById('boxCount');
         
@@ -816,10 +933,16 @@ class PalletTrackerApp {
             message += `\nОшибок: ${errors.length}`;
         }
         
+        // Проверяем, все ли паллеты проверены
         if (this.palletsChecked >= this.totalPalletsToCheck) {
-            message += '\n✅ Все паллеты проверены!';
+            message += '\n✅ Все паллеты проверены! Рабочий день будет завершен автоматически.';
             this.enableEndWorkDay();
             this.showExportPanel();
+            
+            // Автоматически завершаем рабочий день через 2 секунды
+            setTimeout(() => {
+                this.endWorkDay();
+            }, 2000);
         }
         
         this.showNotification(message, 'success');
@@ -870,7 +993,7 @@ class PalletTrackerApp {
                 
                 sheet1Data.push([
                     new Date().toISOString().split('T')[0], // Дата
-                    this.settings.factoryNumber, // Завод
+                    this.settings.factoryNumber, // Завод (номер завода)
                     this.settings.rcName, // РЦ
                     check.code, // Номер Паллеты
                     check.errorSummary, // Наименование ошибки
@@ -890,17 +1013,21 @@ class PalletTrackerApp {
                  'Продолжительность работы', 'ФИО', 'Дополнительный комментарий']
             ];
             
-            if (this.workStartTime) {
-                const workDuration = this.workEndTime ? 
-                    Math.round((this.workEndTime - this.workStartTime) / 1000 / 60) : 0;
+            if (this.workStartTime && this.workEndTime) {
+                // Корректируем время: от начала отнимаем 15 минут, к концу прибавляем 15 минут
+                const adjustedStartTime = new Date(this.workStartTime.getTime() - 15 * 60 * 1000);
+                const adjustedEndTime = new Date(this.workEndTime.getTime() + 15 * 60 * 1000);
+                
+                // Рассчитываем продолжительность работы с учетом перерывов
+                const workDuration = Math.round((this.workEndTime - this.workStartTime - this.totalBreakTime) / 1000 / 60);
                 
                 sheet2Data.push([
                     new Date().toISOString().split('T')[0], // Дата
-                    this.formatTime(this.workStartTime, true), // Время прихода на РЦ
-                    this.workEndTime ? this.formatTime(this.workEndTime, true) : '', // Время ухода с РЦ
-                    workDuration, // Продолжительность работы
+                    this.formatTime(adjustedStartTime, true), // Время прихода на РЦ (скорректированное)
+                    this.formatTime(adjustedEndTime, true), // Время ухода с РЦ (скорректированное)
+                    workDuration, // Продолжительность работы (без учета перерывов)
                     this.settings.specialistName, // ФИО
-                    '' // Дополнительный комментарий
+                    this.breaks.length > 0 ? `Перерывы: ${this.breaks.length}, общее время: ${Math.round(this.totalBreakTime / 1000 / 60)} мин` : '' // Дополнительный комментарий
                 ]);
             }
             
@@ -946,12 +1073,14 @@ class PalletTrackerApp {
 1. Распределительный центр: ${this.settings.rcName}
 2. Код РЦ: ${this.settings.rcCode}
 3. Специалист КРО: ${this.settings.specialistName}
+4. Номер завода: ${this.settings.factoryNumber}
             
 РЕЗУЛЬТАТЫ ПРОВЕРКИ:
             
 1. Всего проверено паллетов: ${totalPallets}
 2. Всего проверено коробов: ${totalBoxes}
 3. Обнаружено ошибок: ${totalErrors}
+4. Перерывов: ${this.breaks.length}, общее время перерывов: ${Math.round(this.totalBreakTime / 1000 / 60)} минут
             
 Детали проверки:
 ${this.todayChecks.map((check, index) => `
@@ -988,11 +1117,13 @@ ${index + 1}. Паллет ${check.code}:
             
 Дата проверки: ${new Date().toLocaleDateString('ru-RU')}
 Специалист КРО: ${this.settings.specialistName}
+Номер завода: ${this.settings.factoryNumber}
             
 Результаты проверки:
 - Проверено паллетов: ${totalPallets}
 - Проверено коробов: ${totalBoxes}
 - Обнаружено ошибок: ${totalErrors}
+- Перерывов: ${this.breaks.length}, общее время: ${Math.round(this.totalBreakTime / 1000 / 60)} минут
             
 ${totalErrors > 0 ? 'Обнаружены следующие проблемы, требующие внимания:' : 'Ошибок не обнаружено. Все паллеты соответствуют требованиям.'}
             
@@ -1034,6 +1165,8 @@ ${this.settings.specialistEmail}
     
     updateWorkTimeDisplay() {
         const display = document.getElementById('workTimeDisplay');
+        const breakDisplay = document.getElementById('breakTimeDisplay');
+        
         if (!display) return;
         
         if (this.workStartTime) {
@@ -1041,20 +1174,54 @@ ${this.settings.specialistEmail}
             
             if (this.workEndTime) {
                 const endStr = this.formatTime(this.workEndTime);
-                const duration = Math.round((this.workEndTime - this.workStartTime) / 1000 / 60);
-                const hours = Math.floor(duration / 60);
-                const minutes = duration % 60;
+                const totalWorkTime = this.workEndTime - this.workStartTime - this.totalBreakTime;
+                const workMinutes = Math.round(totalWorkTime / 1000 / 60);
+                const hours = Math.floor(workMinutes / 60);
+                const minutes = workMinutes % 60;
+                
+                let breakInfo = '';
+                if (this.breaks.length > 0) {
+                    const totalBreakMinutes = Math.round(this.totalBreakTime / 1000 / 60);
+                    breakInfo = ` | Перерывов: ${this.breaks.length} (${totalBreakMinutes} мин)`;
+                }
                 
                 display.innerHTML = `
                     <i class="fas fa-clock"></i> 
                     Начало: ${startStr} | Конец: ${endStr} | 
-                    Время: ${hours}ч ${minutes}мин
+                    Рабочее время: ${hours}ч ${minutes}мин${breakInfo}
                 `;
             } else {
+                let currentTimeInfo = '';
+                if (this.isWorkingDay) {
+                    const currentTime = new Date();
+                    const workedTime = currentTime - this.workStartTime - this.totalBreakTime;
+                    const workedMinutes = Math.round(workedTime / 1000 / 60);
+                    const hours = Math.floor(workedMinutes / 60);
+                    const minutes = workedMinutes % 60;
+                    
+                    let breakInfo = '';
+                    if (this.breaks.length > 0) {
+                        const totalBreakMinutes = Math.round(this.totalBreakTime / 1000 / 60);
+                        breakInfo = ` | Перерывов: ${this.breaks.length} (${totalBreakMinutes} мин)`;
+                    }
+                    
+                    currentTimeInfo = ` | Отработано: ${hours}ч ${minutes}мин${breakInfo}`;
+                }
+                
                 display.innerHTML = `
                     <i class="fas fa-clock"></i> 
-                    Начало: ${startStr} | Рабочий день идет...
+                    Начало: ${startStr}${currentTimeInfo}
                 `;
+                
+                // Обновляем отображение перерыва если он активен
+                if (this.isOnBreak && this.currentBreakStart) {
+                    const breakTime = new Date() - this.currentBreakStart;
+                    const breakMinutes = Math.round(breakTime / 1000 / 60);
+                    if (breakDisplay) {
+                        breakDisplay.textContent = `Перерыв: ${breakMinutes} минут`;
+                        breakDisplay.style.display = 'block';
+                    }
+                }
             }
         } else {
             display.innerHTML = `
@@ -1102,41 +1269,23 @@ ${this.settings.specialistEmail}
     
     updateButtonStates() {
         const startWorkBtn = document.getElementById('startWorkDay');
+        const breakBtn = document.getElementById('breakButton');
         const endWorkBtn = document.getElementById('endWorkDay');
         const startCheckBtn = document.getElementById('startPalletCheck');
         const endCheckBtn = document.getElementById('endPalletCheck');
         
         if (startWorkBtn) startWorkBtn.disabled = this.isWorkingDay;
+        if (breakBtn) breakBtn.disabled = !this.isWorkingDay;
         if (endWorkBtn) endWorkBtn.disabled = !this.isWorkingDay;
-        if (startCheckBtn) startCheckBtn.disabled = !this.isWorkingDay || this.currentPalletCheck !== null;
+        if (startCheckBtn) startCheckBtn.disabled = !this.isWorkingDay || this.currentPalletCheck !== null || this.isOnBreak;
         if (endCheckBtn) endCheckBtn.disabled = this.currentPalletCheck === null;
     }
     
     enablePalletControls() {
-        const startPalletCheck = document.getElementById('startPalletCheck');
-        const endPalletCheck = document.getElementById('endPalletCheck');
-        const startWorkDay = document.getElementById('startWorkDay');
-        const endWorkDay = document.getElementById('endWorkDay');
-        
-        if (startPalletCheck) startPalletCheck.disabled = false;
-        if (endPalletCheck) endPalletCheck.disabled = true;
-        if (startWorkDay) startWorkDay.disabled = true;
-        if (endWorkDay) endWorkDay.disabled = false;
-        
         this.updateButtonStates();
     }
     
     disablePalletControls() {
-        const startPalletCheck = document.getElementById('startPalletCheck');
-        const endPalletCheck = document.getElementById('endPalletCheck');
-        const startWorkDay = document.getElementById('startWorkDay');
-        const endWorkDay = document.getElementById('endWorkDay');
-        
-        if (startPalletCheck) startPalletCheck.disabled = true;
-        if (endPalletCheck) endPalletCheck.disabled = true;
-        if (startWorkDay) startWorkDay.disabled = false;
-        if (endWorkDay) endWorkDay.disabled = true;
-        
         this.updateButtonStates();
     }
     
@@ -1215,6 +1364,12 @@ ${this.settings.specialistEmail}
             work_start: this.workStartTime ? this.workStartTime.toISOString() : null,
             work_end: this.workEndTime ? this.workEndTime.toISOString() : null,
             pallets_checked: this.palletsChecked,
+            breaks: this.breaks.map(br => ({
+                start: br.start.toISOString(),
+                end: br.end.toISOString(),
+                duration: br.duration
+            })),
+            total_break_time: this.totalBreakTime,
             checks: this.todayChecks.map(check => ({
                 ...check,
                 start: check.start.toISOString(),
@@ -1242,7 +1397,15 @@ ${this.settings.specialistEmail}
                 start: this.currentPalletCheck.start.toISOString(),
                 end: this.currentPalletCheck.end ? this.currentPalletCheck.end.toISOString() : null
             } : null,
-            tempErrors: this.tempErrors
+            tempErrors: this.tempErrors,
+            breaks: this.breaks.map(br => ({
+                start: br.start.toISOString(),
+                end: br.end ? br.end.toISOString() : null,
+                duration: br.duration
+            })),
+            isOnBreak: this.isOnBreak,
+            currentBreakStart: this.currentBreakStart ? this.currentBreakStart.toISOString() : null,
+            totalBreakTime: this.totalBreakTime
         };
         
         localStorage.setItem('palletTrackerData', JSON.stringify(data));
@@ -1262,6 +1425,16 @@ ${this.settings.specialistEmail}
             this.palletsChecked = data.palletsChecked || 0;
             this.isWorkingDay = data.isWorkingDay || false;
             this.tempErrors = data.tempErrors || [];
+            this.isOnBreak = data.isOnBreak || false;
+            this.currentBreakStart = data.currentBreakStart ? new Date(data.currentBreakStart) : null;
+            this.totalBreakTime = data.totalBreakTime || 0;
+            
+            // Восстанавливаем перерывы
+            this.breaks = (data.breaks || []).map(br => ({
+                start: new Date(br.start),
+                end: br.end ? new Date(br.end) : null,
+                duration: br.duration || 0
+            }));
             
             // Восстанавливаем todayChecks с преобразованием строк в Date
             this.todayChecks = (data.todayChecks || []).map(check => ({
@@ -1282,6 +1455,24 @@ ${this.settings.specialistEmail}
             // Показываем панель экспорта если все паллеты проверены
             if (this.palletsChecked >= this.totalPalletsToCheck && this.todayChecks.length > 0) {
                 this.showExportPanel();
+            }
+            
+            // Обновляем отображение перерыва если он активен
+            if (this.isOnBreak && this.currentBreakStart) {
+                const breakDisplay = document.getElementById('breakTimeDisplay');
+                if (breakDisplay) {
+                    const breakTime = new Date() - this.currentBreakStart;
+                    const breakMinutes = Math.round(breakTime / 1000 / 60);
+                    breakDisplay.textContent = `Перерыв: ${breakMinutes} минут`;
+                    breakDisplay.style.display = 'block';
+                }
+                
+                const breakButton = document.getElementById('breakButton');
+                if (breakButton) {
+                    breakButton.innerHTML = '<i class="fas fa-coffee"></i> Завершить перерыв';
+                    breakButton.classList.remove('btn-warning');
+                    breakButton.classList.add('btn-success');
+                }
             }
             
         } catch (error) {
@@ -1459,10 +1650,17 @@ ${this.settings.specialistEmail}
                         minute: '2-digit'
                     });
                     
-                    const duration = (endTime - startTime) / 1000 / 60;
-                    const hours = Math.floor(duration / 60);
-                    const minutes = Math.round(duration % 60);
+                    const totalWorkTime = endTime - startTime - (dayData.total_break_time || 0);
+                    const workMinutes = Math.round(totalWorkTime / 1000 / 60);
+                    const hours = Math.floor(workMinutes / 60);
+                    const minutes = workMinutes % 60;
                     totalTime = `${hours}ч ${minutes}м`;
+                    
+                    // Добавляем информацию о перерывах
+                    if (dayData.breaks && dayData.breaks.length > 0) {
+                        const breakMinutes = Math.round((dayData.total_break_time || 0) / 1000 / 60);
+                        totalTime += ` (перерывы: ${breakMinutes}м)`;
+                    }
                 }
                 
                 const row = document.createElement('tr');
