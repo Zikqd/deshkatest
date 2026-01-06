@@ -379,24 +379,5 @@
 
     <script src="script.js"></script>
     <script>
-// Простой тестовый скрипт
-console.log('Тестовый скрипт запущен');
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM загружен');
-    
-    // Пробуем найти кнопку и добавить обработчик
-    setTimeout(function() {
-        var loginBtn = document.getElementById('loginButton');
-        console.log('Кнопка найдена через тестовый скрипт:', !!loginBtn);
-        
-        if (loginBtn) {
-            loginBtn.addEventListener('click', function() {
-                console.log('Тестовый обработчик клика сработал!');
-                alert('Кнопка работает! Теперь введите логин/пароль и нажмите еще раз');
-            });
-        }
-    }, 500);
-});
-</script>
 </body>
 </html>
