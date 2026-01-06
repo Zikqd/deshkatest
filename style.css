@@ -289,7 +289,32 @@ h2 {
     font-size: 1.1rem;
     color: #4a5568;
 }
+/* Стили для отображения перерыва */
+#breakTimeDisplay {
+    background: #fff5f5;
+    padding: 8px 15px;
+    border-radius: 8px;
+    border-left: 4px solid #e53e3e;
+    color: #742a2a;
+    font-weight: 500;
+    margin-top: 10px;
+}
 
+/* Стили для кнопки перерыва в активном состоянии */
+.btn-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+}
+
+/* Адаптивные стили для рабочего времени */
+.work-time-info {
+    padding: 15px;
+    background: #f7fafc;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    color: #4a5568;
+    line-height: 1.6;
+}
 /* Прогресс бар */
 .progress-container {
     margin-bottom: 25px;
