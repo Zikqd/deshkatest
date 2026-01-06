@@ -1,11 +1,19 @@
 [file name]: script.js
 [file content begin]
-// Глобальная функция для отладки
+// ============================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И ФУНКЦИИ
+// ============================================
+let authManager = null;
+let palletTrackerApp = null;
+
+// Функция для отладки
 function debugLog(message, data = null) {
     console.log(`[DEBUG] ${message}`, data || '');
 }
 
-// Простая система авторизации
+// ============================================
+// КЛАСС АВТОРИЗАЦИИ
+// ============================================
 class AuthManager {
     constructor() {
         this.currentUser = null;
@@ -15,68 +23,36 @@ class AuthManager {
             'user': { password: 'user123', name: 'Пользователь' }
         };
     }
-    
+
     init() {
         debugLog('Инициализация AuthManager');
         this.setupEventListeners();
         this.checkAutoLogin();
     }
-    
+
     setupEventListeners() {
         debugLog('Настройка обработчиков событий AuthManager');
-        
-        // Прямое добавление обработчика с проверкой DOM
-        setTimeout(() => {
-            const loginButton = document.getElementById('loginButton');
-            debugLog('Поиск кнопки loginButton:', !!loginButton);
-            
-            if (loginButton) {
-                loginButton.addEventListener('click', (e) => {
-                    debugLog('Кнопка входа нажата');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.login();
-                });
-                
-                // Также добавляем обработчик для формы
-                const loginForm = document.querySelector('.login-form');
-                if (loginForm) {
-                    loginForm.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        debugLog('Форма отправлена');
-                        this.login();
-                    });
-                }
-            } else {
-                debugLog('Кнопка loginButton не найдена!');
-                
-                // Пытаемся найти через другие селекторы
-                const allButtons = document.querySelectorAll('button');
-                debugLog('Всего кнопок на странице:', allButtons.length);
-                
-                // Пробуем найти любую кнопку с текстом "Войти"
-                for (let btn of allButtons) {
-                    if (btn.textContent.includes('Войти')) {
-                        debugLog('Найдена кнопка "Войти" через текст');
-                        btn.addEventListener('click', () => {
-                            debugLog('Кнопка "Войти" нажата через альтернативный поиск');
-                            this.login();
-                        });
-                    }
-                }
-            }
-        }, 100); // Небольшая задержка для полной загрузки DOM
-        
+
+        // Основной обработчик кнопки входа
+        const loginButton = document.getElementById('loginButton');
+        if (loginButton) {
+            loginButton.addEventListener('click', (e) => {
+                debugLog('Кнопка входа нажата');
+                this.login();
+            });
+        } else {
+            debugLog('ERROR: Кнопка входа не найдена!');
+        }
+
         // Кнопка показа/скрытия пароля
         const togglePassword = document.getElementById('togglePassword');
         if (togglePassword) {
-            togglePassword.addEventListener('click', (e) => {
-                e.preventDefault();
+            togglePassword.addEventListener('click', () => {
                 this.togglePasswordVisibility();
             });
         }
-        
-        // Ввод по Enter
+
+        // Ввод по Enter в полях формы
         const usernameInput = document.getElementById('username');
         if (usernameInput) {
             usernameInput.addEventListener('keypress', (e) => {
@@ -86,7 +62,7 @@ class AuthManager {
                 }
             });
         }
-        
+
         const passwordInput = document.getElementById('password');
         if (passwordInput) {
             passwordInput.addEventListener('keypress', (e) => {
@@ -97,7 +73,7 @@ class AuthManager {
             });
         }
     }
-    
+
     togglePasswordVisibility() {
         const passwordInput = document.getElementById('password');
         const toggleButton = document.getElementById('togglePassword');
@@ -112,18 +88,16 @@ class AuthManager {
             }
         }
     }
-    
+
     login() {
-        debugLog('=== МЕТОД LOGIN() ВЫЗВАН ===');
+        debugLog('=== ВХОД В СИСТЕМУ ===');
         
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
         
-        const username = usernameInput ? usernameInput.value.trim() : '';
-        const password = passwordInput ? passwordInput.value : '';
+        debugLog(`Логин: ${username}, Пароль: ${password ? '***' : '(пустой)'}`);
         
-        debugLog('Попытка входа:', { username, passwordLength: password.length });
-        
+        // Проверка заполнения полей
         if (!username || !password) {
             this.showNotification('Введите имя пользователя и пароль', 'error');
             return;
@@ -132,6 +106,7 @@ class AuthManager {
         // Проверка учетных данных
         if (this.users[username] && this.users[username].password === password) {
             debugLog('Учетные данные верны');
+            
             this.currentUser = {
                 username: username,
                 name: this.users[username].name
@@ -140,113 +115,70 @@ class AuthManager {
             // Сохраняем сессию
             sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
             
-            // Показываем основное приложение
-            const loginScreen = document.getElementById('loginScreen');
-            const appContainer = document.getElementById('appContainer');
-            
-            debugLog('Элементы найдены:', {
-                loginScreen: !!loginScreen,
-                appContainer: !!appContainer
-            });
-            
-            if (loginScreen) {
-                loginScreen.style.display = 'none';
-                debugLog('Экран входа скрыт');
-            }
-            
-            if (appContainer) {
-                appContainer.style.display = 'block';
-                debugLog('Основное приложение показано');
-            }
+            // Переключаем экраны
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
             
             // Обновляем информацию о пользователе
-            const currentUserElement = document.getElementById('currentUser');
-            const footerUserElement = document.getElementById('footerUser');
+            document.getElementById('currentUser').textContent = this.currentUser.name;
+            document.getElementById('footerUser').textContent = this.currentUser.name;
             
-            if (currentUserElement) {
-                currentUserElement.textContent = this.currentUser.name;
-                debugLog('Имя пользователя обновлено в шапке');
+            // Инициализируем основное приложение
+            if (!palletTrackerApp) {
+                palletTrackerApp = new PalletTrackerApp();
             }
-            
-            if (footerUserElement) {
-                footerUserElement.textContent = this.currentUser.name;
-                debugLog('Имя пользователя обновлено в подвале');
-            }
-            
-            // Инициализируем приложение
-            if (!window.app) {
-                window.app = new PalletTrackerApp();
-            }
-            window.app.initApp();
+            palletTrackerApp.initApp();
             
             this.showNotification(`Добро пожаловать, ${this.currentUser.name}!`, 'success');
         } else {
             debugLog('Неверные учетные данные');
             this.showNotification('Неверное имя пользователя или пароль', 'error');
-            if (passwordInput) {
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
+            document.getElementById('password').value = '';
+            document.getElementById('password').focus();
         }
     }
-    
+
     logout() {
         sessionStorage.removeItem('currentUser');
         
-        const loginScreen = document.getElementById('loginScreen');
-        const appContainer = document.getElementById('appContainer');
-        
-        if (loginScreen) {
-            loginScreen.style.display = 'flex';
-            debugLog('Экран входа показан');
-        }
-        
-        if (appContainer) {
-            appContainer.style.display = 'none';
-            debugLog('Основное приложение скрыто');
-        }
+        // Переключаем экраны
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('appContainer').style.display = 'none';
         
         // Очищаем форму
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const rememberMe = document.getElementById('rememberMe');
-        
-        if (usernameInput) usernameInput.value = '';
-        if (passwordInput) passwordInput.value = '';
-        if (rememberMe) rememberMe.checked = false;
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('rememberMe').checked = false;
         
         this.showNotification('Вы успешно вышли из системы', 'info');
     }
-    
+
     checkAutoLogin() {
         const savedUser = sessionStorage.getItem('currentUser');
         if (savedUser) {
             try {
                 this.currentUser = JSON.parse(savedUser);
                 
-                const loginScreen = document.getElementById('loginScreen');
-                const appContainer = document.getElementById('appContainer');
+                // Переключаем экраны
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('appContainer').style.display = 'block';
                 
-                if (loginScreen) loginScreen.style.display = 'none';
-                if (appContainer) appContainer.style.display = 'block';
+                // Обновляем информацию о пользователе
+                document.getElementById('currentUser').textContent = this.currentUser.name;
+                document.getElementById('footerUser').textContent = this.currentUser.name;
                 
-                const currentUserElement = document.getElementById('currentUser');
-                const footerUserElement = document.getElementById('footerUser');
-                
-                if (currentUserElement) currentUserElement.textContent = this.currentUser.name;
-                if (footerUserElement) footerUserElement.textContent = this.currentUser.name;
-                
-                if (!window.app) {
-                    window.app = new PalletTrackerApp();
+                // Инициализируем основное приложение
+                if (!palletTrackerApp) {
+                    palletTrackerApp = new PalletTrackerApp();
                 }
-                window.app.initApp();
+                palletTrackerApp.initApp();
                 
             } catch (e) {
-                console.error('Ошибка при восстановлении сессии:', e);
+                debugLog('Ошибка при восстановлении сессии:', e);
             }
         }
     }
-    
+
     showNotification(message, type = 'info') {
         const notification = document.getElementById('notification');
         if (notification) {
@@ -260,7 +192,9 @@ class AuthManager {
     }
 }
 
-// Основной класс приложения
+// ============================================
+// КЛАСС ОСНОВНОГО ПРИЛОЖЕНИЯ
+// ============================================
 class PalletTrackerApp {
     constructor() {
         this.workStartTime = null;
@@ -268,7 +202,7 @@ class PalletTrackerApp {
         this.isWorkingDay = false;
         this.isOnBreak = false;
         this.breakStartTime = null;
-        this.breakDuration = 0; // в минутах
+        this.breakDuration = 0;
         this.currentPalletCheck = null;
         this.palletsChecked = 0;
         this.totalPalletsToCheck = 15;
@@ -286,9 +220,9 @@ class PalletTrackerApp {
             targetPallets: 15
         };
     }
-    
+
     initApp() {
-        debugLog('Инициализация приложения PalletTrackerApp');
+        debugLog('Инициализация PalletTrackerApp');
         this.setupDate();
         this.setupEventListeners();
         this.loadFromStorage();
@@ -296,7 +230,7 @@ class PalletTrackerApp {
         this.updateDisplay();
         this.updateErrorFormVisibility();
     }
-    
+
     setupDate() {
         const now = new Date();
         const options = { 
@@ -305,183 +239,79 @@ class PalletTrackerApp {
             month: 'long', 
             day: 'numeric' 
         };
-        const currentDateElement = document.getElementById('currentDate');
-        if (currentDateElement) {
-            currentDateElement.textContent = now.toLocaleDateString('ru-RU', options);
-        }
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('ru-RU', options);
     }
-    
+
     setupEventListeners() {
         debugLog('Настройка обработчиков событий PalletTrackerApp');
-        
+
         // Кнопка выхода
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (window.authManager) {
-                    window.authManager.logout();
-                }
-            });
-        }
-        
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            authManager.logout();
+        });
+
         // Кнопка настроек
-        const settingsBtn = document.getElementById('settingsBtn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.showSettingsModal();
-            });
-        }
-        
-        // Кнопки рабочего времени
-        const startWorkDayBtn = document.getElementById('startWorkDay');
-        if (startWorkDayBtn) {
-            startWorkDayBtn.addEventListener('click', () => this.startWorkDay());
-        }
-        
-        const breakBtn = document.getElementById('breakBtn');
-        if (breakBtn) {
-            breakBtn.addEventListener('click', () => this.toggleBreak());
-        }
-        
-        const endWorkDayBtn = document.getElementById('endWorkDay');
-        if (endWorkDayBtn) {
-            endWorkDayBtn.addEventListener('click', () => this.showEndWorkDayModal());
-        }
-        
-        const resetDayBtn = document.getElementById('resetDay');
-        if (resetDayBtn) {
-            resetDayBtn.addEventListener('click', () => this.resetWorkDay());
-        }
-        
-        const showHistoryBtn = document.getElementById('showHistory');
-        if (showHistoryBtn) {
-            showHistoryBtn.addEventListener('click', () => this.showHistoryModal());
-        }
-        
-        const saveDataBtn = document.getElementById('saveData');
-        if (saveDataBtn) {
-            saveDataBtn.addEventListener('click', () => this.saveToStorage());
-        }
-        
-        // Кнопки проверки паллетов
-        const startPalletCheckBtn = document.getElementById('startPalletCheck');
-        if (startPalletCheckBtn) {
-            startPalletCheckBtn.addEventListener('click', () => this.startPalletCheck());
-        }
-        
-        const endPalletCheckBtn = document.getElementById('endPalletCheck');
-        if (endPalletCheckBtn) {
-            endPalletCheckBtn.addEventListener('click', () => this.askAboutErrors());
-        }
-        
-        // Кнопки экспорта
-        const exportExcelBtn = document.getElementById('exportExcel');
-        if (exportExcelBtn) {
-            exportExcelBtn.addEventListener('click', () => this.exportToExcel());
-        }
-        
-        const generateActBtn = document.getElementById('generateAct');
-        if (generateActBtn) {
-            generateActBtn.addEventListener('click', () => this.generateAct());
-        }
-        
-        const generateLetterBtn = document.getElementById('generateLetter');
-        if (generateLetterBtn) {
-            generateLetterBtn.addEventListener('click', () => this.generateLetter());
-        }
-        
-        // Ввод D-кода по Enter
-        const palletCodeInput = document.getElementById('palletCode');
-        if (palletCodeInput) {
-            palletCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.startPalletCheck();
-            });
-        }
-        
-        // Ввод количества коробов по Enter
-        const boxCountInput = document.getElementById('boxCount');
-        if (boxCountInput) {
-            boxCountInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.startPalletCheck();
-            });
-        }
-        
-        // Обработчики модальных окон
-        const noErrorsBtn = document.getElementById('noErrors');
-        if (noErrorsBtn) {
-            noErrorsBtn.addEventListener('click', () => this.endPalletCheckWithErrors([]));
-        }
-        
-        const yesErrorsBtn = document.getElementById('yesErrors');
-        if (yesErrorsBtn) {
-            yesErrorsBtn.addEventListener('click', () => this.showErrorForm());
-        }
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            this.showSettingsModal();
+        });
+
+        // Рабочее время
+        document.getElementById('startWorkDay').addEventListener('click', () => this.startWorkDay());
+        document.getElementById('breakBtn').addEventListener('click', () => this.toggleBreak());
+        document.getElementById('endWorkDay').addEventListener('click', () => this.showEndWorkDayModal());
+        document.getElementById('resetDay').addEventListener('click', () => this.resetWorkDay());
+        document.getElementById('showHistory').addEventListener('click', () => this.showHistoryModal());
+        document.getElementById('saveData').addEventListener('click', () => this.saveToStorage());
+
+        // Проверка паллетов
+        document.getElementById('startPalletCheck').addEventListener('click', () => this.startPalletCheck());
+        document.getElementById('endPalletCheck').addEventListener('click', () => this.askAboutErrors());
+
+        // Экспорт
+        document.getElementById('exportExcel').addEventListener('click', () => this.exportToExcel());
+        document.getElementById('generateAct').addEventListener('click', () => this.generateAct());
+        document.getElementById('generateLetter').addEventListener('click', () => this.generateLetter());
+
+        // Ввод по Enter
+        document.getElementById('palletCode').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.startPalletCheck();
+        });
+        document.getElementById('boxCount').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.startPalletCheck();
+        });
+
+        // Модальные окна ошибок
+        document.getElementById('noErrors').addEventListener('click', () => this.endPalletCheckWithErrors([]));
+        document.getElementById('yesErrors').addEventListener('click', () => this.showErrorForm());
         
         // Форма ошибок
-        const addAnotherErrorBtn = document.getElementById('addAnotherError');
-        if (addAnotherErrorBtn) {
-            addAnotherErrorBtn.addEventListener('click', () => this.addError());
-        }
-        
-        const finishErrorsBtn = document.getElementById('finishErrors');
-        if (finishErrorsBtn) {
-            finishErrorsBtn.addEventListener('click', () => this.finishErrors());
-        }
-        
-        const cancelErrorsBtn = document.getElementById('cancelErrors');
-        if (cancelErrorsBtn) {
-            cancelErrorsBtn.addEventListener('click', () => this.cancelErrors());
-        }
-        
+        document.getElementById('addAnotherError').addEventListener('click', () => this.addError());
+        document.getElementById('finishErrors').addEventListener('click', () => this.finishErrors());
+        document.getElementById('cancelErrors').addEventListener('click', () => this.cancelErrors());
+
         // Обновление видимости полей в форме ошибок
         document.querySelectorAll('input[name="errorType"]').forEach(radio => {
             radio.addEventListener('change', () => this.updateErrorFormVisibility());
         });
-        
+
         // Настройки
-        const saveSettingsBtn = document.getElementById('saveSettings');
-        if (saveSettingsBtn) {
-            saveSettingsBtn.addEventListener('click', () => this.saveSettings());
-        }
-        
-        const closeSettingsBtn = document.getElementById('closeSettings');
-        if (closeSettingsBtn) {
-            closeSettingsBtn.addEventListener('click', () => this.hideModal('settingsModal'));
-        }
-        
+        document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+        document.getElementById('closeSettings').addEventListener('click', () => this.hideModal('settingsModal'));
+
         // Закрытие модальных окон
-        const closePalletStatsBtn = document.getElementById('closePalletStats');
-        if (closePalletStatsBtn) {
-            closePalletStatsBtn.addEventListener('click', () => this.hideModal('palletStatsModal'));
-        }
-        
-        const closeHistoryBtn = document.getElementById('closeHistory');
-        if (closeHistoryBtn) {
-            closeHistoryBtn.addEventListener('click', () => this.hideModal('historyModal'));
-        }
-        
-        const closeConfirmModalBtn = document.getElementById('closeConfirmModal');
-        if (closeConfirmModalBtn) {
-            closeConfirmModalBtn.addEventListener('click', () => this.hideModal('confirmModal'));
-        }
-        
-        const confirmYesBtn = document.getElementById('confirmYes');
-        if (confirmYesBtn) {
-            confirmYesBtn.addEventListener('click', () => this.confirmAction());
-        }
-        
-        const confirmNoBtn = document.getElementById('confirmNo');
-        if (confirmNoBtn) {
-            confirmNoBtn.addEventListener('click', () => this.hideModal('confirmModal'));
-        }
-        
+        document.getElementById('closePalletStats').addEventListener('click', () => this.hideModal('palletStatsModal'));
+        document.getElementById('closeHistory').addEventListener('click', () => this.hideModal('historyModal'));
+        document.getElementById('closeConfirmModal').addEventListener('click', () => this.hideModal('confirmModal'));
+        document.getElementById('confirmYes').addEventListener('click', () => this.confirmAction());
+        document.getElementById('confirmNo').addEventListener('click', () => this.hideModal('confirmModal'));
+
         // Клик по фону для закрытия модальных окон
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) this.hideModal(modal.id);
             });
         });
-        
+
         // Обработчик клавиши Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -489,7 +319,90 @@ class PalletTrackerApp {
             }
         });
     }
-    
+
+    // ============ РАБОЧИЙ ДЕНЬ ============
+    startWorkDay() {
+        this.workStartTime = new Date();
+        this.isWorkingDay = true;
+        this.isOnBreak = false;
+        this.breakStartTime = null;
+        this.breakDuration = 0;
+        this.palletsChecked = 0;
+        this.todayChecks = [];
+        this.tempErrors = [];
+        this.currentPalletCheck = null;
+
+        // Скрываем панель экспорта
+        document.getElementById('exportSection').style.display = 'none';
+
+        this.updateDisplay();
+        this.enablePalletControls();
+        authManager.showNotification('Рабочий день начат', 'success');
+    }
+
+    toggleBreak() {
+        if (!this.isWorkingDay) {
+            authManager.showNotification('Сначала начните рабочий день!', 'error');
+            return;
+        }
+
+        if (this.currentPalletCheck) {
+            authManager.showNotification('Завершите текущую проверку паллета перед перерывом!', 'error');
+            return;
+        }
+
+        if (this.isOnBreak) {
+            // Завершение перерыва
+            if (this.breakStartTime) {
+                const breakEndTime = new Date();
+                const breakTime = Math.round((breakEndTime - this.breakStartTime) / 1000 / 60);
+                this.breakDuration += breakTime;
+                this.breakStartTime = null;
+            }
+            this.isOnBreak = false;
+            this.enablePalletControls();
+            authManager.showNotification('Перерыв завершен', 'success');
+        } else {
+            // Начало перерыва
+            this.isOnBreak = true;
+            this.breakStartTime = new Date();
+            this.disablePalletControls();
+            authManager.showNotification('Начался перерыв', 'info');
+        }
+
+        this.updateDisplay();
+    }
+
+    endWorkDay() {
+        this.workEndTime = new Date();
+        this.isWorkingDay = false;
+        this.isOnBreak = false;
+
+        // Завершаем перерыв если он был активен
+        if (this.breakStartTime) {
+            const breakEndTime = new Date();
+            const breakTime = Math.round((breakEndTime - this.breakStartTime) / 1000 / 60);
+            this.breakDuration += breakTime;
+            this.breakStartTime = null;
+        }
+
+        this.saveTodayToHistory();
+        this.updateDisplay();
+        this.disablePalletControls();
+        authManager.showNotification('Рабочий день завершен', 'success');
+    }
+
+    showEndWorkDayModal() {
+        if (this.palletsChecked < this.totalPalletsToCheck) {
+            this.showConfirmModal(
+                `Проверено только ${this.palletsChecked} из ${this.totalPalletsToCheck} паллетов. Завершить рабочий день?`,
+                () => this.endWorkDay()
+            );
+        } else {
+            this.showConfirmModal('Завершить рабочий день?', () => this.endWorkDay());
+        }
+    }
+
     resetWorkDay() {
         this.showConfirmModal('Вы уверены, что хотите сбросить текущий рабочий день? Все данные будут потеряны.', () => {
             this.workStartTime = null;
@@ -502,245 +415,57 @@ class PalletTrackerApp {
             this.palletsChecked = 0;
             this.todayChecks = [];
             this.tempErrors = [];
-            
+
             // Скрываем панель экспорта
-            const exportSection = document.getElementById('exportSection');
-            if (exportSection) exportSection.style.display = 'none';
-            
+            document.getElementById('exportSection').style.display = 'none';
+
             this.updateDisplay();
             this.disablePalletControls();
-            this.showNotification('Рабочий день сброшен', 'info');
+            authManager.showNotification('Рабочий день сброшен', 'info');
         });
     }
-    
-    showSettingsModal() {
-        // Загружаем текущие настройки в форму
-        const rcNameInput = document.getElementById('rcName');
-        const rcCodeInput = document.getElementById('rcCode');
-        const specialistNameInput = document.getElementById('specialistName');
-        const specialistEmailInput = document.getElementById('specialistEmail');
-        const targetPalletsInput = document.getElementById('targetPallets');
-        
-        if (rcNameInput) rcNameInput.value = this.settings.rcName;
-        if (rcCodeInput) rcCodeInput.value = this.settings.rcCode;
-        if (specialistNameInput) specialistNameInput.value = this.settings.specialistName;
-        if (specialistEmailInput) specialistEmailInput.value = this.settings.specialistEmail;
-        if (targetPalletsInput) targetPalletsInput.value = this.settings.targetPallets;
-        
-        this.showModal('settingsModal');
-    }
-    
-    saveSettings() {
-        const rcNameInput = document.getElementById('rcName');
-        const rcCodeInput = document.getElementById('rcCode');
-        const specialistNameInput = document.getElementById('specialistName');
-        const specialistEmailInput = document.getElementById('specialistEmail');
-        const targetPalletsInput = document.getElementById('targetPallets');
-        
-        this.settings = {
-            rcName: rcNameInput ? rcNameInput.value || 'Распределительный центр' : 'Распределительный центр',
-            rcCode: rcCodeInput ? rcCodeInput.value || 'РЦ-001' : 'РЦ-001',
-            specialistName: specialistNameInput ? specialistNameInput.value || 'Иванов И.И.' : 'Иванов И.И.',
-            specialistEmail: specialistEmailInput ? specialistEmailInput.value || 'ivanov@example.com' : 'ivanov@example.com',
-            targetPallets: targetPalletsInput ? parseInt(targetPalletsInput.value) || 15 : 15
-        };
-        
-        this.totalPalletsToCheck = this.settings.targetPallets;
-        
-        localStorage.setItem('palletTrackerSettings', JSON.stringify(this.settings));
-        this.hideModal('settingsModal');
-        this.updateDisplay();
-        this.showNotification('Настройки сохранены', 'success');
-    }
-    
-    loadSettings() {
-        try {
-            const saved = localStorage.getItem('palletTrackerSettings');
-            if (saved) {
-                this.settings = JSON.parse(saved);
-                this.totalPalletsToCheck = this.settings.targetPallets;
-            }
-        } catch (e) {
-            console.error('Ошибка загрузки настроек:', e);
-        }
-    }
-    
-    // ============ МОДАЛЬНЫЕ ОКНА ============
-    showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.style.display = 'flex';
-            setTimeout(() => {
-                modal.classList.add('active');
-            }, 10);
-        }
-    }
-    
-    hideModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('active');
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 300);
-        }
-    }
-    
-    hideAllModals() {
-        document.querySelectorAll('.modal.active').forEach(modal => {
-            modal.classList.remove('active');
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 300);
-        });
-        this.pendingConfirmCallback = null;
-    }
-    
-    showConfirmModal(message, callback) {
-        this.pendingConfirmCallback = callback;
-        const confirmMessage = document.getElementById('confirmMessage');
-        if (confirmMessage) {
-            confirmMessage.textContent = message;
-        }
-        this.showModal('confirmModal');
-    }
-    
-    confirmAction() {
-        if (this.pendingConfirmCallback) {
-            this.pendingConfirmCallback();
-        }
-        this.hideModal('confirmModal');
-        this.pendingConfirmCallback = null;
-    }
-    
-    // ============ РАБОЧИЙ ДЕНЬ ============
-    startWorkDay() {
-        this.workStartTime = new Date();
-        this.isWorkingDay = true;
-        this.isOnBreak = false;
-        this.breakStartTime = null;
-        this.breakDuration = 0;
-        this.palletsChecked = 0;
-        this.todayChecks = [];
-        this.tempErrors = [];
-        this.currentPalletCheck = null;
-        
-        // Скрываем панель экспорта
-        const exportSection = document.getElementById('exportSection');
-        if (exportSection) exportSection.style.display = 'none';
-        
-        this.updateDisplay();
-        this.enablePalletControls();
-        this.showNotification('Рабочий день начат', 'success');
-    }
-    
-    toggleBreak() {
-        if (!this.isWorkingDay) {
-            this.showNotification('Сначала начните рабочий день!', 'error');
-            return;
-        }
-        
-        if (this.currentPalletCheck) {
-            this.showNotification('Завершите текущую проверку паллета перед перерывом!', 'error');
-            return;
-        }
-        
-        if (this.isOnBreak) {
-            // Завершение перерыва
-            if (this.breakStartTime) {
-                const breakEndTime = new Date();
-                const breakTime = Math.round((breakEndTime - this.breakStartTime) / 1000 / 60); // в минутах
-                this.breakDuration += breakTime;
-                this.breakStartTime = null;
-            }
-            this.isOnBreak = false;
-            this.enablePalletControls();
-            this.showNotification('Перерыв завершен', 'success');
-        } else {
-            // Начало перерыва
-            this.isOnBreak = true;
-            this.breakStartTime = new Date();
-            this.disablePalletControls();
-            this.showNotification('Начался перерыв', 'info');
-        }
-        
-        this.updateDisplay();
-    }
-    
-    endWorkDay() {
-        this.workEndTime = new Date();
-        this.isWorkingDay = false;
-        this.isOnBreak = false;
-        
-        // Завершаем перерыв если он был активен
-        if (this.breakStartTime) {
-            const breakEndTime = new Date();
-            const breakTime = Math.round((breakEndTime - this.breakStartTime) / 1000 / 60);
-            this.breakDuration += breakTime;
-            this.breakStartTime = null;
-        }
-        
-        this.saveTodayToHistory();
-        this.updateDisplay();
-        this.disablePalletControls();
-        this.showNotification('Рабочий день завершен', 'success');
-    }
-    
-    showEndWorkDayModal() {
-        if (this.palletsChecked < this.totalPalletsToCheck) {
-            this.showConfirmModal(
-                `Проверено только ${this.palletsChecked} из ${this.totalPalletsToCheck} паллетов. Завершить рабочий день?`,
-                () => this.endWorkDay()
-            );
-        } else {
-            this.showConfirmModal('Завершить рабочий день?', () => this.endWorkDay());
-        }
-    }
-    
+
     // ============ ПРОВЕРКА ПАЛЛЕТОВ ============
     startPalletCheck() {
-        const palletCodeInput = document.getElementById('palletCode');
-        const boxCountInput = document.getElementById('boxCount');
-        
-        const code = palletCodeInput ? palletCodeInput.value.trim().toUpperCase() : '';
-        const boxCount = boxCountInput ? parseInt(boxCountInput.value) || 0 : 0;
-        
+        const code = document.getElementById('palletCode').value.trim().toUpperCase();
+        const boxCount = parseInt(document.getElementById('boxCount').value) || 0;
+
         if (!this.isWorkingDay) {
-            this.showNotification('Сначала начните рабочий день!', 'error');
+            authManager.showNotification('Сначала начните рабочий день!', 'error');
             return;
         }
-        
+
         if (this.isOnBreak) {
-            this.showNotification('Сейчас перерыв! Завершите перерыв чтобы начать проверку.', 'error');
+            authManager.showNotification('Сейчас перерыв! Завершите перерыв чтобы начать проверку.', 'error');
             return;
         }
-        
+
         if (boxCount <= 0) {
-            this.showNotification('Введите количество коробов (минимум 1)!', 'error');
-            if (boxCountInput) boxCountInput.focus();
+            authManager.showNotification('Введите количество коробов (минимум 1)!', 'error');
+            document.getElementById('boxCount').focus();
             return;
         }
-        
+
         if (code) {
             if (!code.startsWith('D') || code.length < 2 || !/^D\d+$/.test(code)) {
-                this.showNotification('Неверный формат D-кода! Пример: D40505050', 'error');
+                authManager.showNotification('Неверный формат D-кода! Пример: D40505050', 'error');
                 return;
             }
-            
+
             const isDuplicate = this.todayChecks.some(check => check.code === code);
             if (isDuplicate) {
-                this.showNotification(`Паллет ${code} уже проверен сегодня!`, 'error');
+                authManager.showNotification(`Паллет ${code} уже проверен сегодня!`, 'error');
                 return;
             }
         }
-        
+
         if (this.currentPalletCheck) {
-            this.showNotification('Завершите текущую проверку паллета!', 'error');
+            authManager.showNotification('Завершите текущую проверку паллета!', 'error');
             return;
         }
-        
+
         this.tempErrors = [];
-        
+
         const palletCode = code || `Без D-кода-${Date.now().toString().slice(-4)}`;
         this.showConfirmModal(`Начать проверку паллета: ${palletCode}\nКоличество коробов: ${boxCount}?`, () => {
             this.currentPalletCheck = {
@@ -751,160 +476,126 @@ class PalletTrackerApp {
                 duration: null,
                 errors: []
             };
-            
-            if (palletCodeInput) palletCodeInput.value = '';
-            if (boxCountInput) boxCountInput.value = '';
-            
+
+            document.getElementById('palletCode').value = '';
+            document.getElementById('boxCount').value = '';
+
             this.updateCurrentCheckDisplay();
             this.updateButtonStates();
-            this.showNotification(`Проверка паллета ${this.currentPalletCheck.code} начата`, 'success');
+            authManager.showNotification(`Проверка паллета ${this.currentPalletCheck.code} начата`, 'success');
         });
     }
-    
+
     askAboutErrors() {
         if (!this.currentPalletCheck) {
-            this.showNotification('Нет активной проверки!', 'error');
+            authManager.showNotification('Нет активной проверки!', 'error');
             return;
         }
-        
+
         this.showModal('errorModal');
     }
-    
+
     showErrorForm() {
         this.hideModal('errorModal');
         this.resetErrorForm();
         this.updateErrorFormVisibility();
         this.showModal('errorDetailsModal');
     }
-    
+
     resetErrorForm() {
-        const defaultRadio = document.querySelector('input[name="errorType"][value="недостача"]');
-        if (defaultRadio) defaultRadio.checked = true;
-        
-        const productPLU = document.getElementById('productPLU');
-        const productName = document.getElementById('productName');
-        const productQuantity = document.getElementById('productQuantity');
-        const productUnit = document.getElementById('productUnit');
-        const errorComment = document.getElementById('errorComment');
-        const addedErrorsList = document.getElementById('addedErrorsList');
-        
-        if (productPLU) productPLU.value = '';
-        if (productName) productName.value = '';
-        if (productQuantity) productQuantity.value = '';
-        if (productUnit) productUnit.value = 'шт';
-        if (errorComment) errorComment.value = '';
-        if (addedErrorsList) addedErrorsList.innerHTML = '';
+        document.querySelector('input[name="errorType"][value="недостача"]').checked = true;
+        document.getElementById('productPLU').value = '';
+        document.getElementById('productName').value = '';
+        document.getElementById('productQuantity').value = '';
+        document.getElementById('productUnit').value = 'шт';
+        document.getElementById('errorComment').value = '';
+        document.getElementById('addedErrorsList').innerHTML = '';
     }
-    
+
     updateErrorFormVisibility() {
-        const errorTypeRadio = document.querySelector('input[name="errorType"]:checked');
-        if (!errorTypeRadio) return;
-        
-        const errorType = errorTypeRadio.value;
+        const errorType = document.querySelector('input[name="errorType"]:checked').value;
         const productDetails = document.getElementById('productDetails');
         
-        if (productDetails) {
-            if (['недостача', 'излишки', 'качество товара'].includes(errorType)) {
-                productDetails.style.display = 'block';
-            } else {
-                productDetails.style.display = 'none';
-            }
+        if (['недостача', 'излишки', 'качество товара'].includes(errorType)) {
+            productDetails.style.display = 'block';
+        } else {
+            productDetails.style.display = 'none';
         }
     }
-    
+
     addError() {
-        const errorTypeRadio = document.querySelector('input[name="errorType"]:checked');
-        if (!errorTypeRadio) return;
-        
-        const errorType = errorTypeRadio.value;
-        const errorCommentInput = document.getElementById('errorComment');
-        const comment = errorCommentInput ? errorCommentInput.value.trim() : '';
-        
+        const errorType = document.querySelector('input[name="errorType"]:checked').value;
+        const comment = document.getElementById('errorComment').value.trim();
+
         const errorData = {
             type: errorType,
             comment: comment || ''
         };
-        
+
         if (['недостача', 'излишки', 'качество товара'].includes(errorType)) {
-            const productPLU = document.getElementById('productPLU');
-            const productName = document.getElementById('productName');
-            const productQuantity = document.getElementById('productQuantity');
-            const productUnit = document.getElementById('productUnit');
-            
-            errorData.plu = productPLU ? productPLU.value : '';
-            errorData.productName = productName ? productName.value : '';
-            errorData.quantity = productQuantity ? productQuantity.value : '';
-            errorData.unit = productUnit ? productUnit.value : 'шт';
+            errorData.plu = document.getElementById('productPLU').value;
+            errorData.productName = document.getElementById('productName').value;
+            errorData.quantity = document.getElementById('productQuantity').value;
+            errorData.unit = document.getElementById('productUnit').value;
         }
-        
+
         this.tempErrors.push(errorData);
         this.updateAddedErrorsList();
-        
+
         // Очистить форму для следующей ошибки
-        const productPLU = document.getElementById('productPLU');
-        const productName = document.getElementById('productName');
-        const productQuantity = document.getElementById('productQuantity');
-        const errorComment = document.getElementById('errorComment');
+        document.getElementById('productPLU').value = '';
+        document.getElementById('productName').value = '';
+        document.getElementById('productQuantity').value = '';
+        document.getElementById('errorComment').value = '';
         
-        if (productPLU) productPLU.value = '';
-        if (productName) productName.value = '';
-        if (productQuantity) productQuantity.value = '';
-        if (errorComment) errorComment.value = '';
-        
-        const defaultRadio = document.querySelector('input[name="errorType"][value="недостача"]');
-        if (defaultRadio) defaultRadio.checked = true;
+        document.querySelector('input[name="errorType"][value="недостача"]').checked = true;
         this.updateErrorFormVisibility();
-        
-        this.showNotification('Ошибка добавлена', 'success');
+
+        authManager.showNotification('Ошибка добавлена', 'success');
     }
-    
+
     updateAddedErrorsList() {
         const list = document.getElementById('addedErrorsList');
-        if (!list) return;
-        
         list.innerHTML = '';
-        
+
         this.tempErrors.forEach((error, index) => {
             const li = document.createElement('li');
             let text = `${index + 1}. ${error.type}`;
-            
+
             if (error.productName) {
                 text += ` - ${error.productName}`;
             }
             if (error.comment) {
                 text += ` (${error.comment.length > 30 ? error.comment.substring(0, 30) + '...' : error.comment})`;
             }
-            
+
             li.innerHTML = `
                 <span>${text}</span>
                 <button class="remove-error" data-index="${index}">× Удалить</button>
             `;
-            
+
             list.appendChild(li);
         });
-        
+
         document.querySelectorAll('.remove-error').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const button = e.target.closest('.remove-error');
-                if (button) {
-                    const index = parseInt(button.dataset.index);
-                    this.tempErrors.splice(index, 1);
-                    this.updateAddedErrorsList();
-                }
+                const index = parseInt(e.target.closest('.remove-error').dataset.index);
+                this.tempErrors.splice(index, 1);
+                this.updateAddedErrorsList();
             });
         });
     }
-    
+
     finishErrors() {
         if (this.tempErrors.length === 0) {
-            this.showNotification('Не добавлено ни одной ошибки!', 'error');
+            authManager.showNotification('Не добавлено ни одной ошибки!', 'error');
             return;
         }
-        
+
         this.endPalletCheckWithErrors([...this.tempErrors]);
         this.hideModal('errorDetailsModal');
     }
-    
+
     cancelErrors() {
         this.showConfirmModal('Отменить добавление ошибок?', () => {
             this.tempErrors = [];
@@ -912,226 +603,143 @@ class PalletTrackerApp {
             this.askAboutErrors();
         });
     }
-    
+
     endPalletCheckWithErrors(errors) {
         if (!this.currentPalletCheck) return;
-        
+
         this.hideModal('errorModal');
         this.hideModal('errorDetailsModal');
-        
+
         const endTime = new Date();
         const duration = Math.round((endTime - this.currentPalletCheck.start) / 1000);
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;
-        
+
         this.currentPalletCheck.end = endTime;
         this.currentPalletCheck.duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         this.currentPalletCheck.errors = [...errors];
-        
+
         this.todayChecks.push({...this.currentPalletCheck});
         this.palletsChecked++;
-        
+
         this.updateTodayChecksTable();
         this.updateDisplay();
-        
+
         let message = `Паллет ${this.currentPalletCheck.code} проверен!\n`;
         message += `Коробов: ${this.currentPalletCheck.boxCount}\n`;
         message += `Длительность: ${this.currentPalletCheck.duration}\n`;
         message += `Проверено: ${this.palletsChecked}/${this.totalPalletsToCheck}`;
-        
+
         if (errors.length > 0) {
             message += `\nОшибок: ${errors.length}`;
         }
-        
+
         if (this.palletsChecked >= this.totalPalletsToCheck) {
             message += '\n✅ Все паллеты проверены!';
             this.enableEndWorkDay();
             this.showExportPanel();
         }
-        
-        this.showNotification(message, 'success');
-        
+
+        authManager.showNotification(message, 'success');
+
         this.currentPalletCheck = null;
         this.tempErrors = [];
         this.updateCurrentCheckDisplay();
         this.updateButtonStates();
     }
-    
+
     showExportPanel() {
-        const exportSection = document.getElementById('exportSection');
-        if (exportSection) exportSection.style.display = 'block';
+        document.getElementById('exportSection').style.display = 'block';
     }
-    
-    // ============ СТАТИСТИКА ПАЛЛЕТА ============
-    showPalletStats(index) {
-        this.currentPalletStatsIndex = index;
-        const check = this.todayChecks[index];
-        
-        const palletStatsTitle = document.getElementById('palletStatsTitle');
-        const statsInfo = document.getElementById('palletStatsInfo');
-        const errorsList = document.getElementById('palletErrorsList');
-        
-        if (palletStatsTitle) {
-            palletStatsTitle.textContent = `Статистика паллета ${check.code} (№${index + 1})`;
-        }
-        
-        if (!statsInfo || !errorsList) return;
-        
-        const startTime = new Date(check.start);
-        const endTime = new Date(check.end);
-        
-        const startStr = startTime.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
+
+    // ============ МОДАЛЬНЫЕ ОКНА ============
+    showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
+    }
+
+    hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    hideAllModals() {
+        document.querySelectorAll('.modal.active').forEach(modal => {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
         });
-        
-        const endStr = endTime.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        
-        statsInfo.innerHTML = `
-            <p><strong>D-код паллета:</strong> ${check.code}</p>
-            <p><strong>Количество коробов:</strong> ${check.boxCount || 0}</p>
-            <p><strong>Начало проверки:</strong> ${startStr}</p>
-            <p><strong>Окончание проверки:</strong> ${endStr}</p>
-            <p><strong>Длительность проверки:</strong> ${check.duration}</p>
-            <p><strong>Количество ошибок:</strong> ${check.errors ? check.errors.length : 0}</p>
-        `;
-        
-        if (!check.errors || check.errors.length === 0) {
-            errorsList.innerHTML = `
-                <div class="error-item">
-                    <h4>✅ Ошибок не обнаружено</h4>
-                </div>
-            `;
-        } else {
-            let errorsHtml = '';
-            
-            check.errors.forEach((error, i) => {
-                errorsHtml += `
-                    <div class="error-item">
-                        <h4>${i + 1}. ${error.type}</h4>
-                        <div class="error-details">
-                `;
-                
-                if (['недостача', 'излишки', 'качество товара'].includes(error.type)) {
-                    if (error.productName) {
-                        errorsHtml += `<p><strong>Товар:</strong> ${error.productName}</p>`;
-                    }
-                    if (error.plu) {
-                        errorsHtml += `<p><strong>PLU:</strong> ${error.plu}</p>`;
-                    }
-                    if (error.quantity) {
-                        errorsHtml += `<p><strong>Количество:</strong> ${error.quantity}${error.unit || ''}</p>`;
-                    }
-                }
-                
-                if (error.comment) {
-                    errorsHtml += `<p><strong>Комментарий:</strong> ${error.comment}</p>`;
-                }
-                
-                errorsHtml += `
-                        </div>
-                    </div>
-                `;
-            });
-            
-            errorsList.innerHTML = errorsHtml;
-        }
-        
-        this.showModal('palletStatsModal');
+        this.pendingConfirmCallback = null;
     }
-    
-    // ============ ИСТОРИЯ ПРОВЕРОК ============
-    showHistoryModal() {
-        this.updateHistoryTable();
-        this.showModal('historyModal');
+
+    showConfirmModal(message, callback) {
+        this.pendingConfirmCallback = callback;
+        document.getElementById('confirmMessage').textContent = message;
+        this.showModal('confirmModal');
     }
-    
-    updateHistoryTable() {
-        const tbody = document.getElementById('historyBody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-        
-        const dates = Object.keys(this.allDaysHistory).sort((a, b) => b.localeCompare(a));
-        
-        if (dates.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 30px;">
-                        <i class="fas fa-history" style="font-size: 2rem; color: #a0aec0; margin-bottom: 10px;"></i>
-                        <p>История проверок пуста</p>
-                    </td>
-                </tr>
-            `;
-            return;
+
+    confirmAction() {
+        if (this.pendingConfirmCallback) {
+            this.pendingConfirmCallback();
         }
-        
-        dates.forEach(dateStr => {
-            const dayData = this.allDaysHistory[dateStr];
-            
-            if (dayData.work_start) {
-                const date = new Date(dateStr);
-                const dateDisplay = date.toLocaleDateString('ru-RU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
-                
-                const startTime = new Date(dayData.work_start);
-                const startStr = startTime.toLocaleTimeString('ru-RU', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
-                let endStr = '-';
-                let totalTime = '-';
-                let pallets = dayData.pallets_checked || 0;
-                let totalBoxes = 0;
-                
-                if (dayData.checks) {
-                    totalBoxes = dayData.checks.reduce((sum, check) => sum + (check.boxCount || 0), 0);
-                }
-                
-                if (dayData.work_end) {
-                    const endTime = new Date(dayData.work_end);
-                    endStr = endTime.toLocaleTimeString('ru-RU', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-                    
-                    const duration = (endTime - startTime) / 1000 / 60;
-                    const hours = Math.floor(duration / 60);
-                    const minutes = Math.round(duration % 60);
-                    totalTime = `${hours}ч ${minutes}м`;
-                }
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${dateDisplay}</td>
-                    <td>${startStr}</td>
-                    <td>${endStr}</td>
-                    <td>${pallets}</td>
-                    <td>${totalBoxes}</td>
-                    <td>${totalTime}</td>
-                `;
-                
-                tbody.appendChild(row);
+        this.hideModal('confirmModal');
+        this.pendingConfirmCallback = null;
+    }
+
+    // ============ НАСТРОЙКИ ============
+    showSettingsModal() {
+        document.getElementById('rcName').value = this.settings.rcName;
+        document.getElementById('rcCode').value = this.settings.rcCode;
+        document.getElementById('specialistName').value = this.settings.specialistName;
+        document.getElementById('specialistEmail').value = this.settings.specialistEmail;
+        document.getElementById('targetPallets').value = this.settings.targetPallets;
+
+        this.showModal('settingsModal');
+    }
+
+    saveSettings() {
+        this.settings = {
+            rcName: document.getElementById('rcName').value || 'Распределительный центр',
+            rcCode: document.getElementById('rcCode').value || 'РЦ-001',
+            specialistName: document.getElementById('specialistName').value || 'Иванов И.И.',
+            specialistEmail: document.getElementById('specialistEmail').value || 'ivanov@example.com',
+            targetPallets: parseInt(document.getElementById('targetPallets').value) || 15
+        };
+
+        this.totalPalletsToCheck = this.settings.targetPallets;
+
+        localStorage.setItem('palletTrackerSettings', JSON.stringify(this.settings));
+        this.hideModal('settingsModal');
+        this.updateDisplay();
+        authManager.showNotification('Настройки сохранены', 'success');
+    }
+
+    loadSettings() {
+        try {
+            const saved = localStorage.getItem('palletTrackerSettings');
+            if (saved) {
+                this.settings = JSON.parse(saved);
+                this.totalPalletsToCheck = this.settings.targetPallets;
             }
-        });
+        } catch (e) {
+            debugLog('Ошибка загрузки настроек:', e);
+        }
     }
-    
+
     // ============ ЭКСПОРТ ДАННЫХ ============
     exportToExcel() {
         if (this.todayChecks.length === 0) {
-            this.showNotification('Нет данных для экспорта', 'error');
+            authManager.showNotification('Нет данных для экспорта', 'error');
             return;
         }
-        
+
         try {
             // Создаем книгу Excel
             const wb = XLSX.utils.book_new();
@@ -1225,35 +833,34 @@ class PalletTrackerApp {
             // Сохраняем файл
             XLSX.writeFile(wb, fileName);
             
-            this.showNotification('Excel файл успешно скачан в нужном формате', 'success');
+            authManager.showNotification('Excel файл успешно скачан в нужном формате', 'success');
         } catch (error) {
-            console.error('Ошибка при экспорте в Excel:', error);
-            this.showNotification('Ошибка при экспорте в Excel', 'error');
+            debugLog('Ошибка при экспорте в Excel:', error);
+            authManager.showNotification('Ошибка при экспорте в Excel', 'error');
         }
     }
-    
+
     convertDurationToMinutes(durationStr) {
         if (!durationStr) return 0;
         
         try {
-            // Формат "минуты:секунды"
             const parts = durationStr.split(':');
             if (parts.length >= 2) {
                 const minutes = parseInt(parts[0]) || 0;
                 const seconds = parseInt(parts[1]) || 0;
                 const totalMinutes = minutes + (seconds / 60);
-                return Math.round(totalMinutes * 10) / 10; // Округляем до 1 десятичного знака
+                return Math.round(totalMinutes * 10) / 10;
             }
         } catch (e) {
-            console.error('Ошибка преобразования длительности:', e);
+            debugLog('Ошибка преобразования длительности:', e);
         }
         
         return 0;
     }
-    
+
     generateAct() {
         if (this.todayChecks.length === 0) {
-            this.showNotification('Нет данных для формирования акта', 'error');
+            authManager.showNotification('Нет данных для формирования акта', 'error');
             return;
         }
         
@@ -1290,12 +897,12 @@ ${index + 1}. Паллет ${check.code}:
         `;
         
         this.downloadTextFile(`Акт_проверки_${this.settings.rcCode}_${new Date().toISOString().slice(0,10)}.txt`, actContent);
-        this.showNotification('Акт проверки сформирован', 'success');
+        authManager.showNotification('Акт проверки сформирован', 'success');
     }
-    
+
     generateLetter() {
         if (this.todayChecks.length === 0) {
-            this.showNotification('Нет данных для формирования письма', 'error');
+            authManager.showNotification('Нет данных для формирования письма', 'error');
             return;
         }
         
@@ -1331,9 +938,9 @@ ${this.settings.specialistEmail}
         `;
         
         this.downloadTextFile(`Письмо_результатов_${this.settings.rcCode}_${new Date().toISOString().slice(0,10)}.txt`, letterContent);
-        this.showNotification('Письмо результатов сформировано', 'success');
+        authManager.showNotification('Письмо результатов сформировано', 'success');
     }
-    
+
     downloadTextFile(filename, content) {
         const element = document.createElement('a');
         const file = new Blob([content], {type: 'text/plain'});
@@ -1343,7 +950,7 @@ ${this.settings.specialistEmail}
         element.click();
         document.body.removeChild(element);
     }
-    
+
     // ============ ОТОБРАЖЕНИЕ ДАННЫХ ============
     updateDisplay() {
         this.updateWorkTimeDisplay();
@@ -1354,10 +961,9 @@ ${this.settings.specialistEmail}
         this.updateCurrentCheckDisplay();
         this.updateTodayStats();
     }
-    
+
     updateWorkTimeDisplay() {
         const display = document.getElementById('workTimeDisplay');
-        if (!display) return;
         
         if (this.workStartTime) {
             const startStr = this.formatTime(this.workStartTime);
@@ -1403,25 +1009,18 @@ ${this.settings.specialistEmail}
             `;
         }
     }
-    
+
     updatePalletCounter() {
-        const palletCounter = document.getElementById('palletCounter');
-        if (palletCounter) {
-            palletCounter.textContent = `Паллетов проверено: ${this.palletsChecked}/${this.totalPalletsToCheck}`;
-        }
+        document.getElementById('palletCounter').textContent = `Паллетов проверено: ${this.palletsChecked}/${this.totalPalletsToCheck}`;
     }
-    
+
     updateProgressBar() {
-        const progressFill = document.getElementById('progressFill');
-        if (progressFill) {
-            const progress = (this.palletsChecked / this.totalPalletsToCheck) * 100;
-            progressFill.style.width = `${progress}%`;
-        }
+        const progress = (this.palletsChecked / this.totalPalletsToCheck) * 100;
+        document.getElementById('progressFill').style.width = `${progress}%`;
     }
-    
+
     updateCurrentCheckDisplay() {
         const display = document.getElementById('currentCheckDisplay');
-        if (!display) return;
         
         if (this.currentPalletCheck) {
             const startStr = this.formatTime(this.currentPalletCheck.start);
@@ -1439,78 +1038,56 @@ ${this.settings.specialistEmail}
             display.innerHTML = '';
         }
     }
-    
+
     updateButtonStates() {
-        const startWorkBtn = document.getElementById('startWorkDay');
+        document.getElementById('startWorkDay').disabled = this.isWorkingDay;
         const breakBtn = document.getElementById('breakBtn');
-        const endWorkBtn = document.getElementById('endWorkDay');
-        const startCheckBtn = document.getElementById('startPalletCheck');
-        const endCheckBtn = document.getElementById('endPalletCheck');
-        
-        if (startWorkBtn) startWorkBtn.disabled = this.isWorkingDay;
-        if (breakBtn) {
-            breakBtn.disabled = !this.isWorkingDay;
-            breakBtn.innerHTML = this.isOnBreak ? 
-                '<i class="fas fa-play"></i> Продолжить работу' : 
-                '<i class="fas fa-coffee"></i> Перерыв';
-            breakBtn.className = this.isOnBreak ? 'btn btn-success' : 'btn btn-warning';
-        }
-        if (endWorkBtn) endWorkBtn.disabled = !this.isWorkingDay;
-        if (startCheckBtn) startCheckBtn.disabled = !this.isWorkingDay || this.currentPalletCheck !== null || this.isOnBreak;
-        if (endCheckBtn) endCheckBtn.disabled = this.currentPalletCheck === null;
+        breakBtn.disabled = !this.isWorkingDay;
+        breakBtn.innerHTML = this.isOnBreak ? 
+            '<i class="fas fa-play"></i> Продолжить работу' : 
+            '<i class="fas fa-coffee"></i> Перерыв';
+        breakBtn.className = this.isOnBreak ? 'btn btn-success' : 'btn btn-warning';
+        document.getElementById('endWorkDay').disabled = !this.isWorkingDay;
+        document.getElementById('startPalletCheck').disabled = !this.isWorkingDay || this.currentPalletCheck !== null || this.isOnBreak;
+        document.getElementById('endPalletCheck').disabled = this.currentPalletCheck === null;
     }
-    
+
     enablePalletControls() {
-        const startPalletCheck = document.getElementById('startPalletCheck');
-        const endPalletCheck = document.getElementById('endPalletCheck');
-        const startWorkDay = document.getElementById('startWorkDay');
-        const endWorkDay = document.getElementById('endWorkDay');
-        const breakBtn = document.getElementById('breakBtn');
-        
-        if (startPalletCheck) startPalletCheck.disabled = false;
-        if (endPalletCheck) endPalletCheck.disabled = true;
-        if (startWorkDay) startWorkDay.disabled = true;
-        if (endWorkDay) endWorkDay.disabled = false;
-        if (breakBtn) breakBtn.disabled = false;
+        document.getElementById('startPalletCheck').disabled = false;
+        document.getElementById('endPalletCheck').disabled = true;
+        document.getElementById('startWorkDay').disabled = true;
+        document.getElementById('endWorkDay').disabled = false;
+        document.getElementById('breakBtn').disabled = false;
         
         this.updateButtonStates();
     }
-    
+
     disablePalletControls() {
-        const startPalletCheck = document.getElementById('startPalletCheck');
-        const endPalletCheck = document.getElementById('endPalletCheck');
-        const startWorkDay = document.getElementById('startWorkDay');
-        const endWorkDay = document.getElementById('endWorkDay');
-        const breakBtn = document.getElementById('breakBtn');
-        
-        if (startPalletCheck) startPalletCheck.disabled = true;
-        if (endPalletCheck) endPalletCheck.disabled = true;
-        if (startWorkDay) startWorkDay.disabled = false;
-        if (endWorkDay) endWorkDay.disabled = true;
-        if (breakBtn) breakBtn.disabled = true;
+        document.getElementById('startPalletCheck').disabled = true;
+        document.getElementById('endPalletCheck').disabled = true;
+        document.getElementById('startWorkDay').disabled = false;
+        document.getElementById('endWorkDay').disabled = true;
+        document.getElementById('breakBtn').disabled = true;
         
         this.updateButtonStates();
     }
-    
+
     enableEndWorkDay() {
-        const endWorkDay = document.getElementById('endWorkDay');
-        if (endWorkDay) endWorkDay.disabled = false;
+        document.getElementById('endWorkDay').disabled = false;
         this.updateButtonStates();
     }
-    
+
     // ============ ТАБЛИЦА СЕГОДНЯШНИХ ПРОВЕРОК ============
     updateTodayChecksTable() {
         const tbody = document.getElementById('todayChecksBody');
-        if (!tbody) return;
-        
         tbody.innerHTML = '';
-        
+
         this.todayChecks.forEach((check, index) => {
             const row = document.createElement('tr');
             const startStr = this.formatTime(check.start);
             const endStr = this.formatTime(check.end);
             const hasErrors = check.errors && check.errors.length > 0;
-            
+
             row.innerHTML = `
                 <td>${index + 1}</td>
                 <td><strong>${check.code}</strong></td>
@@ -1529,40 +1106,186 @@ ${this.settings.specialistEmail}
                     </button>
                 </td>
             `;
-            
+
             tbody.appendChild(row);
         });
-        
+
         // Добавить обработчики для кнопок просмотра статистики
         document.querySelectorAll('.view-stats-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const button = e.target.closest('.view-stats-btn');
-                if (button) {
-                    const index = parseInt(button.dataset.index);
-                    this.showPalletStats(index);
-                }
+                const index = parseInt(e.target.closest('.view-stats-btn').dataset.index);
+                this.showPalletStats(index);
             });
         });
     }
-    
+
     updateTodayStats() {
         const totalPallets = this.todayChecks.length;
         const totalBoxes = this.todayChecks.reduce((sum, check) => sum + (check.boxCount || 0), 0);
         const totalErrors = this.todayChecks.reduce((sum, check) => sum + (check.errors ? check.errors.length : 0), 0);
-        
-        const totalPalletsElement = document.getElementById('totalPallets');
-        const totalBoxesElement = document.getElementById('totalBoxes');
-        const totalErrorsElement = document.getElementById('totalErrors');
-        
-        if (totalPalletsElement) totalPalletsElement.textContent = totalPallets;
-        if (totalBoxesElement) totalBoxesElement.textContent = totalBoxes;
-        if (totalErrorsElement) totalErrorsElement.textContent = totalErrors;
+
+        document.getElementById('totalPallets').textContent = totalPallets;
+        document.getElementById('totalBoxes').textContent = totalBoxes;
+        document.getElementById('totalErrors').textContent = totalErrors;
     }
-    
+
+    // ============ СТАТИСТИКА ПАЛЛЕТА ============
+    showPalletStats(index) {
+        this.currentPalletStatsIndex = index;
+        const check = this.todayChecks[index];
+
+        document.getElementById('palletStatsTitle').textContent = `Статистика паллета ${check.code} (№${index + 1})`;
+
+        const startTime = new Date(check.start);
+        const endTime = new Date(check.end);
+
+        const startStr = startTime.toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        const endStr = endTime.toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        document.getElementById('palletStatsInfo').innerHTML = `
+            <p><strong>D-код паллета:</strong> ${check.code}</p>
+            <p><strong>Количество коробов:</strong> ${check.boxCount || 0}</p>
+            <p><strong>Начало проверки:</strong> ${startStr}</p>
+            <p><strong>Окончание проверки:</strong> ${endStr}</p>
+            <p><strong>Длительность проверки:</strong> ${check.duration}</p>
+            <p><strong>Количество ошибок:</strong> ${check.errors ? check.errors.length : 0}</p>
+        `;
+
+        if (!check.errors || check.errors.length === 0) {
+            document.getElementById('palletErrorsList').innerHTML = `
+                <div class="error-item">
+                    <h4>✅ Ошибок не обнаружено</h4>
+                </div>
+            `;
+        } else {
+            let errorsHtml = '';
+            
+            check.errors.forEach((error, i) => {
+                errorsHtml += `
+                    <div class="error-item">
+                        <h4>${i + 1}. ${error.type}</h4>
+                        <div class="error-details">
+                `;
+                
+                if (['недостача', 'излишки', 'качество товара'].includes(error.type)) {
+                    if (error.productName) {
+                        errorsHtml += `<p><strong>Товар:</strong> ${error.productName}</p>`;
+                    }
+                    if (error.plu) {
+                        errorsHtml += `<p><strong>PLU:</strong> ${error.plu}</p>`;
+                    }
+                    if (error.quantity) {
+                        errorsHtml += `<p><strong>Количество:</strong> ${error.quantity}${error.unit || ''}</p>`;
+                    }
+                }
+                
+                if (error.comment) {
+                    errorsHtml += `<p><strong>Комментарий:</strong> ${error.comment}</p>`;
+                }
+                
+                errorsHtml += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('palletErrorsList').innerHTML = errorsHtml;
+        }
+
+        this.showModal('palletStatsModal');
+    }
+
+    // ============ ИСТОРИЯ ПРОВЕРОК ============
+    showHistoryModal() {
+        this.updateHistoryTable();
+        this.showModal('historyModal');
+    }
+
+    updateHistoryTable() {
+        const tbody = document.getElementById('historyBody');
+        tbody.innerHTML = '';
+
+        const dates = Object.keys(this.allDaysHistory).sort((a, b) => b.localeCompare(a));
+
+        if (dates.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 30px;">
+                        <i class="fas fa-history" style="font-size: 2rem; color: #a0aec0; margin-bottom: 10px;"></i>
+                        <p>История проверок пуста</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        dates.forEach(dateStr => {
+            const dayData = this.allDaysHistory[dateStr];
+
+            if (dayData.work_start) {
+                const date = new Date(dateStr);
+                const dateDisplay = date.toLocaleDateString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+
+                const startTime = new Date(dayData.work_start);
+                const startStr = startTime.toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                let endStr = '-';
+                let totalTime = '-';
+                let pallets = dayData.pallets_checked || 0;
+                let totalBoxes = 0;
+
+                if (dayData.checks) {
+                    totalBoxes = dayData.checks.reduce((sum, check) => sum + (check.boxCount || 0), 0);
+                }
+
+                if (dayData.work_end) {
+                    const endTime = new Date(dayData.work_end);
+                    endStr = endTime.toLocaleTimeString('ru-RU', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    const duration = (endTime - startTime) / 1000 / 60;
+                    const hours = Math.floor(duration / 60);
+                    const minutes = Math.round(duration % 60);
+                    totalTime = `${hours}ч ${minutes}м`;
+                }
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dateDisplay}</td>
+                    <td>${startStr}</td>
+                    <td>${endStr}</td>
+                    <td>${pallets}</td>
+                    <td>${totalBoxes}</td>
+                    <td>${totalTime}</td>
+                `;
+
+                tbody.appendChild(row);
+            }
+        });
+    }
+
     // ============ СОХРАНЕНИЕ ДАННЫХ ============
     saveTodayToHistory() {
         const today = new Date().toISOString().split('T')[0];
-        
+
         this.allDaysHistory[today] = {
             work_start: this.workStartTime ? this.workStartTime.toISOString() : null,
             work_end: this.workEndTime ? this.workEndTime.toISOString() : null,
@@ -1574,10 +1297,10 @@ ${this.settings.specialistEmail}
                 end: check.end.toISOString()
             }))
         };
-        
+
         this.saveToStorage();
     }
-    
+
     saveToStorage() {
         const data = {
             allDaysHistory: this.allDaysHistory,
@@ -1600,18 +1323,18 @@ ${this.settings.specialistEmail}
             } : null,
             tempErrors: this.tempErrors
         };
-        
+
         localStorage.setItem('palletTrackerData', JSON.stringify(data));
-        this.showNotification('Данные сохранены', 'success');
+        authManager.showNotification('Данные сохранены', 'success');
     }
-    
+
     loadFromStorage() {
         try {
             const saved = localStorage.getItem('palletTrackerData');
             if (!saved) return;
-            
+
             const data = JSON.parse(saved);
-            
+
             this.allDaysHistory = data.allDaysHistory || {};
             this.workStartTime = data.workStartTime ? new Date(data.workStartTime) : null;
             this.workEndTime = data.workEndTime ? new Date(data.workEndTime) : null;
@@ -1621,14 +1344,14 @@ ${this.settings.specialistEmail}
             this.palletsChecked = data.palletsChecked || 0;
             this.isWorkingDay = data.isWorkingDay || false;
             this.tempErrors = data.tempErrors || [];
-            
-            // Восстанавливаем todayChecks с преобразованием строк в Date
+
+            // Восстанавливаем todayChecks
             this.todayChecks = (data.todayChecks || []).map(check => ({
                 ...check,
                 start: new Date(check.start),
                 end: new Date(check.end)
             }));
-            
+
             // Восстанавливаем currentPalletCheck
             if (data.currentPalletCheck) {
                 this.currentPalletCheck = {
@@ -1637,17 +1360,17 @@ ${this.settings.specialistEmail}
                     end: data.currentPalletCheck.end ? new Date(data.currentPalletCheck.end) : null
                 };
             }
-            
+
             // Показываем панель экспорта если все паллеты проверены
             if (this.palletsChecked >= this.totalPalletsToCheck && this.todayChecks.length > 0) {
                 this.showExportPanel();
             }
-            
+
         } catch (error) {
-            console.error('Ошибка загрузки данных:', error);
+            debugLog('Ошибка загрузки данных:', error);
         }
     }
-    
+
     // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
     formatTime(date) {
         if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '-';
@@ -1657,50 +1380,23 @@ ${this.settings.specialistEmail}
             second: '2-digit'
         });
     }
-    
-    showNotification(message, type = 'info') {
-        const notification = document.getElementById('notification');
-        if (notification) {
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-    }
 }
 
-// Асинхронная инициализация после полной загрузки DOM
-function initApp() {
-    debugLog('=== НАЧАЛО ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ ===');
+// ============================================
+// ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    debugLog('DOM загружен, начинаем инициализацию');
     
-    // Проверяем, существует ли уже authManager
-    if (!window.authManager) {
-        debugLog('Создание нового AuthManager');
-        window.authManager = new AuthManager();
-        window.authManager.init();
-    } else {
-        debugLog('AuthManager уже существует');
-    }
+    // Инициализируем менеджер авторизации
+    authManager = new AuthManager();
+    authManager.init();
     
-    debugLog('=== ЗАВЕРШЕНИЕ ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ ===');
-}
-
-// Несколько способов инициализации для надежности
-if (document.readyState === 'loading') {
-    debugLog('Документ еще загружается, добавляем обработчик DOMContentLoaded');
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    debugLog('Документ уже загружен, инициализируем сразу');
-    initApp();
-}
-
-// Также инициализируем при полной загрузке страницы
-window.addEventListener('load', () => {
-    debugLog('Страница полностью загружена');
+    debugLog('Приложение инициализировано');
 });
 
-// Экспортируем для отладки в консоли
+// Экспортируем для отладки
+window.authManager = authManager;
+window.palletTrackerApp = palletTrackerApp;
 window.debugLog = debugLog;
 [file content end]
