@@ -14,20 +14,26 @@ class AuthManager {
         this.checkAutoLogin();
     }
     
-    setupEventListeners() {
-        // Кнопка входа
-        const loginButton = document.getElementById('loginButton');
-        if (loginButton) {
-            loginButton.addEventListener('click', () => this.login());
-        } else {
-            console.error('Кнопка loginButton не найдена!');
-        }
-        
-        // Кнопка показа/скрытия пароля
-        const togglePassword = document.getElementById('togglePassword');
-        if (togglePassword) {
-            togglePassword.addEventListener('click', () => this.togglePasswordVisibility());
-        }
+setupEventListeners() {
+    // Кнопка входа
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton) {
+        loginButton.addEventListener('click', (e) => {
+            e.preventDefault(); // Добавляем preventDefault
+            this.login();
+        });
+    } else {
+        console.error('Кнопка loginButton не найдена!');
+    }
+    
+    // Кнопка показа/скрытия пароля
+    const togglePassword = document.getElementById('togglePassword');
+    if (togglePassword) {
+        togglePassword.addEventListener('click', (e) => {
+            e.preventDefault(); // Добавляем preventDefault
+            this.togglePasswordVisibility();
+        });
+    }}
         
         // Ввод по Enter
         const usernameInput = document.getElementById('username');
@@ -46,20 +52,34 @@ class AuthManager {
     }
     
     togglePasswordVisibility() {
-        const passwordInput = document.getElementById('password');
-        const toggleButton = document.getElementById('togglePassword');
-        const icon = toggleButton.querySelector('i');
-        
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            icon.className = 'fas fa-eye-slash';
-            toggleButton.setAttribute('aria-label', 'Скрыть пароль');
-        } else {
-            passwordInput.type = 'password';
-            icon.className = 'fas fa-eye';
-            toggleButton.setAttribute('aria-label', 'Показать пароль');
-        }
+    console.log('togglePasswordVisibility вызван'); // Для отладки
+    const passwordInput = document.getElementById('password');
+    const toggleButton = document.getElementById('togglePassword');
+    
+    if (!passwordInput || !toggleButton) {
+        console.error('Элементы не найдены!');
+        return;
     }
+    
+    const icon = toggleButton.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        if (icon) {
+            icon.className = 'fas fa-eye-slash';
+        }
+        toggleButton.setAttribute('aria-label', 'Скрыть пароль');
+    } else {
+        passwordInput.type = 'password';
+        if (icon) {
+            icon.className = 'fas fa-eye';
+        }
+        toggleButton.setAttribute('aria-label', 'Показать пароль');
+    }
+    
+    // Фокус обратно на поле ввода
+    passwordInput.focus();
+}
     
     login() {
         console.log('Метод login() вызван');
@@ -1684,8 +1704,39 @@ ${this.settings.specialistEmail}
 
 // Запуск приложения при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Документ загружен');
+    console.log('Документ загружен, начинаем инициализацию');
+    
+    // Проверяем наличие необходимых элементов
+    const loginButton = document.getElementById('loginButton');
+    const togglePassword = document.getElementById('togglePassword');
+    
+    console.log('loginButton найден:', !!loginButton);
+    console.log('togglePassword найден:', !!togglePassword);
+    
+    // Инициализируем AuthManager
     window.authManager = new AuthManager();
     window.authManager.init();
+    
+    // Также добавляем обработчики напрямую для надежности
+    if (loginButton) {
+        loginButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Клик по кнопке входа (прямой обработчик)');
+            if (window.authManager && window.authManager.login) {
+                window.authManager.login();
+            }
+        });
+    }
+    
+    if (togglePassword) {
+        togglePassword.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('Клик по кнопке показа пароля (прямой обработчик)');
+            if (window.authManager && window.authManager.togglePasswordVisibility) {
+                window.authManager.togglePasswordVisibility();
+            }
+        });
+    }
+    
     console.log('Приложения инициализированы');
 });
