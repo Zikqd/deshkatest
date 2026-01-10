@@ -8,60 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Экран входа -->
-    <div id="loginScreen" class="login-screen">
-        <div class="login-container">
-            <div class="login-header">
-                <h1><i class="fas fa-clipboard-check"></i> Трекер проверок паллетов РЦ</h1>
-                <p class="login-subtitle">Авторизация сотрудника</p>
-            </div>
-            
-            <div class="login-form">
-                <div class="form-group">
-                    <label for="username"><i class="fas fa-user"></i> Имя пользователя:</label>
-                    <input type="text" id="username" placeholder="Введите имя пользователя" autocomplete="username">
-                </div>
-<div class="form-group">
-    <label for="password"><i class="fas fa-lock"></i> Пароль:</label>
-    <div class="password-input">
-        <input type="password" id="password" placeholder="Введите пароль" autocomplete="current-password">
-        <!-- Добавляем кнопку для показа пароля -->
-        <button type="button" id="togglePassword" class="toggle-password" aria-label="Показать пароль">
-            <i class="fas fa-eye"></i>
-        </button>
-    </div>
-</div>
-                
-                <div class="form-group remember-me">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="rememberMe">
-                        <span>Запомнить меня</span>
-                    </label>
-                </div>
-                
-                <button id="loginButton" class="btn btn-primary login-btn">
-                    <i class="fas fa-sign-in-alt"></i> Войти
-                </button>
-                
-                <div class="login-hint">
-                    <p><i class="fas fa-info-circle"></i> Для доступа к системе обратитесь к администратору</p>
-                    <p class="test-credentials">
-                        <strong>Тестовые данные:</strong><br>
-                        Логин: <code>admin</code> Пароль: <code>admin123</code><br>
-                        Логин: <code>operator</code> Пароль: <code>operator123</code><br>
-                        Логин: <code>user</code> Пароль: <code>user123</code>
-                    </p>
-                </div>
-            </div>
-            
-            <div class="login-footer">
-                <div class="version">Версия 2.0</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Основное приложение (скрыто до входа) -->
-    <div id="appContainer" style="display: none;">
+    <!-- Основное приложение -->
+    <div id="appContainer">
         <div class="container">
             <!-- Шапка -->
             <header>
@@ -71,42 +19,40 @@
                 </div>
                 <div class="header-right">
                     <div class="user-info">
-                        <span id="currentUser">Пользователь</span>
+                        <span id="currentUser">Специалист КРО</span>
                         <button id="settingsBtn" class="btn btn-small btn-secondary">
                             <i class="fas fa-cog"></i> Настройки
-                        </button>
-                        <button id="logoutBtn" class="btn btn-small btn-secondary">
-                            <i class="fas fa-sign-out-alt"></i> Выйти
                         </button>
                     </div>
                 </div>
             </header>
 
             <!-- Панель рабочего времени -->
-<section class="work-time-section">
-    <h2><i class="fas fa-clock"></i> Рабочее время</h2>
-    <div class="work-time-controls">
-        <button id="startWorkDay" class="btn btn-primary">
-            <i class="fas fa-play"></i> Начало рабочего дня
-        </button>
-        <button id="breakButton" class="btn btn-warning" disabled>
-            <i class="fas fa-coffee"></i> Перерыв
-        </button>
-        <button id="endWorkDay" class="btn btn-danger" disabled>
-            <i class="fas fa-stop"></i> Конец рабочего дня
-        </button>
-        <button id="resetDay" class="btn btn-warning">
-            <i class="fas fa-redo"></i> Сбросить день
-        </button>
-        <button id="showHistory" class="btn btn-info">
-            <i class="fas fa-history"></i> История проверок
-        </button>
-    </div>
-    <div class="work-time-info">
-        <p id="workTimeDisplay">Рабочий день не начат</p>
-        <p id="breakTimeDisplay" style="display: none; margin-top: 10px; color: #e53e3e;"></p>
-    </div>
-</section>
+            <section class="work-time-section">
+                <h2><i class="fas fa-clock"></i> Рабочее время</h2>
+                <div class="work-time-controls">
+                    <button id="startWorkDay" class="btn btn-primary">
+                        <i class="fas fa-play"></i> Начало рабочего дня
+                    </button>
+                    <button id="breakButton" class="btn btn-warning" disabled>
+                        <i class="fas fa-coffee"></i> Перерыв
+                    </button>
+                    <button id="endWorkDay" class="btn btn-danger" disabled>
+                        <i class="fas fa-stop"></i> Конец рабочего дня
+                    </button>
+                    <button id="resetDay" class="btn btn-warning">
+                        <i class="fas fa-redo"></i> Сбросить день
+                    </button>
+                    <button id="showHistory" class="btn btn-info">
+                        <i class="fas fa-history"></i> История проверок
+                    </button>
+                </div>
+                <div class="work-time-info">
+                    <p id="workTimeDisplay">Рабочий день не начат</p>
+                    <p id="breakTimeDisplay" style="display: none; margin-top: 10px; color: #e53e3e;"></p>
+                </div>
+            </section>
+            
             <!-- Панель проверки паллетов -->
             <section class="pallet-section">
                 <h2><i class="fas fa-pallet"></i> Проверка паллетов</h2>
@@ -197,7 +143,7 @@
                 <button id="saveData" class="btn btn-save">
                     <i class="fas fa-save"></i> Сохранить данные
                 </button>
-                <div class="version">Пользователь: <span id="footerUser"></span></div>
+                <div class="version">Пользователь: <span id="footerUser">Специалист КРО</span></div>
             </footer>
         </div>
     </div>
@@ -316,53 +262,65 @@
         </div>
     </div>
 
-  <!-- Модальное окно настроек -->
-<div id="settingsModal" class="modal">
-    <div class="modal-content">
-        <h3><i class="fas fa-cog"></i> Настройки</h3>
-        <div class="settings-form">
-            <div class="form-group">
-                <label for="rcName"><i class="fas fa-warehouse"></i> Название РЦ:</label>
-                <input type="text" id="rcName" placeholder="Введите название распределительного центра">
-            </div>
-            
-            <div class="form-group">
-                <label for="rcCode"><i class="fas fa-hashtag"></i> Код РЦ:</label>
-                <input type="text" id="rcCode" placeholder="Введите код РЦ">
-            </div>
-            
-            <div class="form-group">
-                <label for="specialistName"><i class="fas fa-user-tie"></i> Имя специалиста КРО:</label>
-                <input type="text" id="specialistName" placeholder="Введите имя специалиста">
-            </div>
-            
-            <div class="form-group">
-                <label for="specialistEmail"><i class="fas fa-envelope"></i> Email специалиста:</label>
-                <input type="email" id="specialistEmail" placeholder="email@example.com">
-            </div>
-            
-            <div class="form-group">
-                <label for="targetPallets"><i class="fas fa-bullseye"></i> Целевое количество паллетов:</label>
-                <input type="number" id="targetPallets" min="1" max="50" value="15">
-            </div>
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-cog"></i> Настройки</h3>
+            <div class="settings-form">
+                <div class="form-group">
+                    <label for="rcName"><i class="fas fa-warehouse"></i> Название РЦ:</label>
+                    <input type="text" id="rcName" placeholder="Введите название распределительного центра">
+                </div>
+                
+                <div class="form-group">
+                    <label for="rcCode"><i class="fas fa-hashtag"></i> Код РЦ:</label>
+                    <input type="text" id="rcCode" placeholder="Введите код РЦ">
+                </div>
+                
+                <div class="form-group">
+                    <label for="specialistName"><i class="fas fa-user-tie"></i> Имя специалиста КРО:</label>
+                    <input type="text" id="specialistName" placeholder="Введите имя специалиста">
+                </div>
+                
+                <div class="form-group">
+                    <label for="specialistEmail"><i class="fas fa-envelope"></i> Email специалиста:</label>
+                    <input type="email" id="specialistEmail" placeholder="email@example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="targetPallets"><i class="fas fa-bullseye"></i> Целевое количество паллетов:</label>
+                    <input type="number" id="targetPallets" min="1" max="50" value="15">
+                </div>
 
-            <!-- Заменено: Номер завода вместо кода завода -->
-            <div class="form-group">
-                <label for="factoryNumber"><i class="fas fa-industry"></i> Номер завода:</label>
-                <input type="text" id="factoryNumber" placeholder="Например: 159" value="159">
+                <!-- Заменено: Номер завода вместо кода завода -->
+                <div class="form-group">
+                    <label for="factoryNumber"><i class="fas fa-industry"></i> Номер завода:</label>
+                    <input type="text" id="factoryNumber" placeholder="Например: 159" value="159">
+                </div>
             </div>
-        </div>
-        
-        <div class="modal-buttons">
-            <button id="saveSettings" class="btn btn-primary">
-                <i class="fas fa-save"></i> Сохранить настройки
-            </button>
-            <button id="closeSettings" class="btn btn-secondary">
-                <i class="fas fa-times"></i> Отмена
-            </button>
+            
+            <div class="modal-buttons">
+                <button id="saveSettings" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Сохранить настройки
+                </button>
+                <button id="closeSettings" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Отмена
+                </button>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Модальное окно подтверждения -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-question-circle"></i> Подтверждение</h3>
+            <p id="confirmMessage">Вы уверены?</p>
+            <div class="modal-buttons">
+                <button id="confirmYes" class="btn btn-primary">Да</button>
+                <button id="confirmNo" class="btn btn-secondary">Нет</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Уведомления -->
     <div id="notification" class="notification"></div>
