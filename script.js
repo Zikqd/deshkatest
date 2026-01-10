@@ -1,3 +1,5 @@
+[file name]: script.js
+[file content begin]
 // Основной класс приложения
 class PalletTrackerApp {
     constructor() {
@@ -994,10 +996,16 @@ ${this.settings.specialistEmail}
         if (!display) return;
         
         if (this.workStartTime) {
-            const startStr = this.formatTime(this.workStartTime);
+            // КОРРЕКТИРОВКА: отнимаем 15 минут от начала рабочего дня для отображения
+            const adjustedStartTime = new Date(this.workStartTime.getTime() - 15 * 60 * 1000);
+            const startStr = this.formatTime(adjustedStartTime);
             
             if (this.workEndTime) {
-                const endStr = this.formatTime(this.workEndTime);
+                // КОРРЕКТИРОВКА: прибавляем 15 минут к окончанию рабочего дня для отображения
+                const adjustedEndTime = new Date(this.workEndTime.getTime() + 15 * 60 * 1000);
+                const endStr = this.formatTime(adjustedEndTime);
+                
+                // Фактическое рабочее время (без учета корректировок ±15 минут)
                 const totalWorkTime = this.workEndTime - this.workStartTime - this.totalBreakTime;
                 const workMinutes = Math.round(totalWorkTime / 1000 / 60);
                 const hours = Math.floor(workMinutes / 60);
@@ -1013,6 +1021,7 @@ ${this.settings.specialistEmail}
                     <i class="fas fa-clock"></i> 
                     Начало: ${startStr} | Конец: ${endStr} | 
                     Рабочее время: ${hours}ч ${minutes}мин${breakInfo}
+                    <br><small><em>(Время скорректировано: -15 мин к началу, +15 мин к концу)</em></small>
                 `;
             } else {
                 let currentTimeInfo = '';
@@ -1035,6 +1044,7 @@ ${this.settings.specialistEmail}
                 display.innerHTML = `
                     <i class="fas fa-clock"></i> 
                     Начало: ${startStr}${currentTimeInfo}
+                    <br><small><em>(Время начала скорректировано: -15 мин)</em></small>
                 `;
                 
                 // Обновляем отображение перерыва если он активен
@@ -1453,7 +1463,9 @@ ${this.settings.specialistEmail}
                 });
                 
                 const startTime = new Date(dayData.work_start);
-                const startStr = startTime.toLocaleTimeString('ru-RU', {
+                // КОРРЕКТИРОВКА: отнимаем 15 минут для отображения
+                const adjustedStartTime = new Date(startTime.getTime() - 15 * 60 * 1000);
+                const startStr = adjustedStartTime.toLocaleTimeString('ru-RU', {
                     hour: '2-digit',
                     minute: '2-digit'
                 });
@@ -1469,7 +1481,9 @@ ${this.settings.specialistEmail}
                 
                 if (dayData.work_end) {
                     const endTime = new Date(dayData.work_end);
-                    endStr = endTime.toLocaleTimeString('ru-RU', {
+                    // КОРРЕКТИРОВКА: прибавляем 15 минут для отображения
+                    const adjustedEndTime = new Date(endTime.getTime() + 15 * 60 * 1000);
+                    endStr = adjustedEndTime.toLocaleTimeString('ru-RU', {
                         hour: '2-digit',
                         minute: '2-digit'
                     });
@@ -1513,3 +1527,4 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('Приложение инициализировано');
 });
+[file content end]
