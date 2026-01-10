@@ -1,205 +1,4 @@
-// Простая система авторизации
-class AuthManager {
-    constructor() {
-        this.currentUser = null;
-        this.users = {
-            'admin': { password: 'admin123', name: 'Администратор' },
-            'operator': { password: 'operator123', name: 'Оператор' },
-            'user': { password: 'user123', name: 'Пользователь' }
-        };
-    }
-    
-    init() {
-        this.setupEventListeners();
-        this.checkAutoLogin();
-    }
-    
-setupEventListeners() {
-    // Кнопка входа
-    const loginButton = document.getElementById('loginButton');
-    if (loginButton) {
-        loginButton.addEventListener('click', (e) => {
-            e.preventDefault(); // Добавляем preventDefault
-            this.login();
-        });
-    } else {
-        console.error('Кнопка loginButton не найдена!');
-    }
-    
-    // Кнопка показа/скрытия пароля
-    const togglePassword = document.getElementById('togglePassword');
-    if (togglePassword) {
-        togglePassword.addEventListener('click', (e) => {
-            e.preventDefault(); // Добавляем preventDefault
-            this.togglePasswordVisibility();
-        });
-    }}
-        
-        // Ввод по Enter
-        const usernameInput = document.getElementById('username');
-        if (usernameInput) {
-            usernameInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.login();
-            });
-        }
-        
-        const passwordInput = document.getElementById('password');
-        if (passwordInput) {
-            passwordInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.login();
-            });
-        }
-    }
-    
-    togglePasswordVisibility() {
-    console.log('togglePasswordVisibility вызван'); // Для отладки
-    const passwordInput = document.getElementById('password');
-    const toggleButton = document.getElementById('togglePassword');
-    
-    if (!passwordInput || !toggleButton) {
-        console.error('Элементы не найдены!');
-        return;
-    }
-    
-    const icon = toggleButton.querySelector('i');
-    
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        if (icon) {
-            icon.className = 'fas fa-eye-slash';
-        }
-        toggleButton.setAttribute('aria-label', 'Скрыть пароль');
-    } else {
-        passwordInput.type = 'password';
-        if (icon) {
-            icon.className = 'fas fa-eye';
-        }
-        toggleButton.setAttribute('aria-label', 'Показать пароль');
-    }
-    
-    // Фокус обратно на поле ввода
-    passwordInput.focus();
-}
-    
-    login() {
-        console.log('Метод login() вызван');
-        
-        const username = document.getElementById('username')?.value.trim() || '';
-        const password = document.getElementById('password')?.value || '';
-        
-        console.log('Попытка входа:', username);
-        
-        if (!username || !password) {
-            this.showNotification('Введите имя пользователя и пароль', 'error');
-            return;
-        }
-        
-        // Проверка учетных данных
-        if (this.users[username] && this.users[username].password === password) {
-            this.currentUser = {
-                username: username,
-                name: this.users[username].name
-            };
-            
-            // Сохраняем сессию
-            sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-            
-            // Показываем основное приложение
-            const loginScreen = document.getElementById('loginScreen');
-            const appContainer = document.getElementById('appContainer');
-            
-            if (loginScreen) loginScreen.style.display = 'none';
-            if (appContainer) appContainer.style.display = 'block';
-            
-            // Обновляем информацию о пользователе
-            const currentUserElement = document.getElementById('currentUser');
-            const footerUserElement = document.getElementById('footerUser');
-            
-            if (currentUserElement) currentUserElement.textContent = this.currentUser.name;
-            if (footerUserElement) footerUserElement.textContent = this.currentUser.name;
-            
-            // Инициализируем приложение
-            if (!window.app) {
-                window.app = new PalletTrackerApp();
-            }
-            window.app.initApp();
-            
-            this.showNotification(`Добро пожаловать, ${this.currentUser.name}!`, 'success');
-        } else {
-            this.showNotification('Неверное имя пользователя или пароль', 'error');
-            const passwordInput = document.getElementById('password');
-            if (passwordInput) {
-                passwordInput.value = '';
-                passwordInput.focus();
-            }
-        }
-    }
-    
-    logout() {
-        sessionStorage.removeItem('currentUser');
-        
-        const loginScreen = document.getElementById('loginScreen');
-        const appContainer = document.getElementById('appContainer');
-        
-        if (loginScreen) loginScreen.style.display = 'flex';
-        if (appContainer) appContainer.style.display = 'none';
-        
-        // Очищаем форму
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const rememberMe = document.getElementById('rememberMe');
-        
-        if (usernameInput) usernameInput.value = '';
-        if (passwordInput) passwordInput.value = '';
-        if (rememberMe) rememberMe.checked = false;
-        
-        this.showNotification('Вы успешно вышли из системы', 'info');
-    }
-    
-    checkAutoLogin() {
-        const savedUser = sessionStorage.getItem('currentUser');
-        if (savedUser) {
-            try {
-                this.currentUser = JSON.parse(savedUser);
-                
-                const loginScreen = document.getElementById('loginScreen');
-                const appContainer = document.getElementById('appContainer');
-                
-                if (loginScreen) loginScreen.style.display = 'none';
-                if (appContainer) appContainer.style.display = 'block';
-                
-                const currentUserElement = document.getElementById('currentUser');
-                const footerUserElement = document.getElementById('footerUser');
-                
-                if (currentUserElement) currentUserElement.textContent = this.currentUser.name;
-                if (footerUserElement) footerUserElement.textContent = this.currentUser.name;
-                
-                if (!window.app) {
-                    window.app = new PalletTrackerApp();
-                }
-                window.app.initApp();
-                
-            } catch (e) {
-                console.error('Ошибка при восстановлении сессии:', e);
-            }
-        }
-    }
-    
-    showNotification(message, type = 'info') {
-        const notification = document.getElementById('notification');
-        if (notification) {
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-    }
-}
-
 // Основной класс приложения
-// В конструкторе класса PalletTrackerApp:
 class PalletTrackerApp {
     constructor() {
         this.workStartTime = null;
@@ -226,7 +25,7 @@ class PalletTrackerApp {
             specialistName: 'Иванов И.И.',
             specialistEmail: 'ivanov@example.com',
             targetPallets: 15,
-            factoryNumber: '159' // Изменено: номер завода (без .0)
+            factoryNumber: '159'
         };
     }
     
@@ -256,16 +55,6 @@ class PalletTrackerApp {
     
     setupEventListeners() {
         console.log('Настройка обработчиков событий');
-        
-        // Кнопка выхода
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (window.authManager) {
-                    window.authManager.logout();
-                }
-            });
-        }
         
         // Кнопка настроек
         const settingsBtn = document.getElementById('settingsBtn');
@@ -500,7 +289,7 @@ class PalletTrackerApp {
         this.showModal('settingsModal');
     }
     
-      saveSettings() {
+    saveSettings() {
         const rcNameInput = document.getElementById('rcName');
         const rcCodeInput = document.getElementById('rcCode');
         const specialistNameInput = document.getElementById('specialistName');
@@ -514,10 +303,17 @@ class PalletTrackerApp {
             specialistName: specialistNameInput ? specialistNameInput.value || 'Иванов И.И.' : 'Иванов И.И.',
             specialistEmail: specialistEmailInput ? specialistEmailInput.value || 'ivanov@example.com' : 'ivanov@example.com',
             targetPallets: targetPalletsInput ? parseInt(targetPalletsInput.value) || 15 : 15,
-            factoryNumber: factoryNumberInput ? factoryNumberInput.value || '159' : '159' // Изменено
+            factoryNumber: factoryNumberInput ? factoryNumberInput.value || '159' : '159'
         };
         
         this.totalPalletsToCheck = this.settings.targetPallets;
+        
+        // Обновляем имя пользователя в интерфейсе
+        const currentUserElement = document.getElementById('currentUser');
+        const footerUserElement = document.getElementById('footerUser');
+        
+        if (currentUserElement) currentUserElement.textContent = this.settings.specialistName;
+        if (footerUserElement) footerUserElement.textContent = this.settings.specialistName;
         
         localStorage.setItem('palletTrackerSettings', JSON.stringify(this.settings));
         this.hideModal('settingsModal');
@@ -531,6 +327,13 @@ class PalletTrackerApp {
             if (saved) {
                 this.settings = JSON.parse(saved);
                 this.totalPalletsToCheck = this.settings.targetPallets;
+                
+                // Обновляем имя пользователя в интерфейсе
+                const currentUserElement = document.getElementById('currentUser');
+                const footerUserElement = document.getElementById('footerUser');
+                
+                if (currentUserElement) currentUserElement.textContent = this.settings.specialistName;
+                if (footerUserElement) footerUserElement.textContent = this.settings.specialistName;
             }
         } catch (e) {
             console.error('Ошибка загрузки настроек:', e);
@@ -980,7 +783,6 @@ class PalletTrackerApp {
     }
     
     // ============ ЭКСПОРТ В EXCEL ============
-     // ============ ЭКСПОРТ В EXCEL ============
     exportToExcel() {
         if (this.todayChecks.length === 0) {
             this.showNotification('Нет данных для экспорта', 'error');
@@ -1095,7 +897,7 @@ class PalletTrackerApp {
 1. Распределительный центр: ${this.settings.rcName}
 2. Код РЦ: ${this.settings.rcCode}
 3. Специалист КРО: ${this.settings.specialistName}
-4. Номер завода: ${this.settings.factoryNumber} <!-- Изменено -->
+4. Номер завода: ${this.settings.factoryNumber}
             
 РЕЗУЛЬТАТЫ ПРОВЕРКИ:
             
@@ -1139,7 +941,7 @@ ${index + 1}. Паллет ${check.code}:
             
 Дата проверки: ${new Date().toLocaleDateString('ru-RU')}
 Специалист КРО: ${this.settings.specialistName}
-Номер завода: ${this.settings.factoryNumber} <!-- Изменено -->
+Номер завода: ${this.settings.factoryNumber}
             
 Результаты проверки:
 - Проверено паллетов: ${totalPallets}
@@ -1164,7 +966,6 @@ ${this.settings.specialistEmail}
         this.downloadTextFile(`Письмо_результатов_${this.settings.rcCode}_${new Date().toISOString().slice(0,10)}.txt`, letterContent);
         this.showNotification('Письмо результатов сформировано', 'success');
     }
-}
     
     downloadTextFile(filename, content) {
         const element = document.createElement('a');
@@ -1706,37 +1507,9 @@ ${this.settings.specialistEmail}
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Документ загружен, начинаем инициализацию');
     
-    // Проверяем наличие необходимых элементов
-    const loginButton = document.getElementById('loginButton');
-    const togglePassword = document.getElementById('togglePassword');
+    // Инициализируем приложение
+    window.app = new PalletTrackerApp();
+    window.app.initApp();
     
-    console.log('loginButton найден:', !!loginButton);
-    console.log('togglePassword найден:', !!togglePassword);
-    
-    // Инициализируем AuthManager
-    window.authManager = new AuthManager();
-    window.authManager.init();
-    
-    // Также добавляем обработчики напрямую для надежности
-    if (loginButton) {
-        loginButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log('Клик по кнопке входа (прямой обработчик)');
-            if (window.authManager && window.authManager.login) {
-                window.authManager.login();
-            }
-        });
-    }
-    
-    if (togglePassword) {
-        togglePassword.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log('Клик по кнопке показа пароля (прямой обработчик)');
-            if (window.authManager && window.authManager.togglePasswordVisibility) {
-                window.authManager.togglePasswordVisibility();
-            }
-        });
-    }
-    
-    console.log('Приложения инициализированы');
+    console.log('Приложение инициализировано');
 });
